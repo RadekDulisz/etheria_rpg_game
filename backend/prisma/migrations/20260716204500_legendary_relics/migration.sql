@@ -1,0 +1,2 @@
+ALTER TYPE "ItemRarity" ADD VALUE 'LEGENDARY';
+

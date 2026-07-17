@@ -1,0 +1,3 @@
+ALTER TYPE "TransactionType" ADD VALUE 'PROPERTY_RESTORATION';
+
+ALTER TABLE "properties" ADD COLUMN "lastRestoredAt" TIMESTAMP(3);

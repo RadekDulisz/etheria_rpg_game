@@ -1,0 +1,610 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------
+// Obszar: User (etap projektowania ERD 1/N)
+// ---------------------------------------------------------------------
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String
+  role            Role      @default(PLAYER)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Soft-delete pod wymog RODO (prawo do usuniecia konta bez utraty
+  // integralnosci historii walk/gildii odwolujacych sie do usera).
+  deletedAt       DateTime?
+
+  character Character?
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------
+// Obszar: Combatant (etap projektowania ERD 4/N)
+//
+// Refaktor po decyzji: bot ma korzystac z tych samych struktur co gracz
+// (staty, ekwipunek, ekspertyza broni). Zamiast duplikowac te tabele
+// osobno dla Character i osobno dla Bot, wprowadzono wspolny byt
+// nadrzedny Combatant - to on jest "wlascicielem" statow, ekwipunku
+// i ekspertyzy broni. Character i Bot to dwie rozne "fasady" nad
+// Combatant (kazdy ma z nim relacje 1:1).
+//
+// Zaleta: silnik walki (etap 6) operuje wylacznie na Combatant, bez
+// wiedzy, czy po drugiej stronie jest gracz czy bot - to samo w sobie
+// dobry przyklad polimorfizmu/separacji odpowiedzialnosci do opisania
+// w rozdziale o architekturze.
+// ---------------------------------------------------------------------
+
+enum CombatantType {
+  PLAYER
+  BOT
+}
+
+model Combatant {
+  id   String        @id @default(uuid())
+  type CombatantType
+
+  character Character?
+  bot       Bot?
+
+  stats           CombatantStats?
+  inventoryItems  InventoryItem[]
+  equippedItems   EquippedItem[]
+  weaponExpertise CombatantWeaponExpertise[]
+
+  attackerBattles Battle[]      @relation("AttackerCombatant")
+  defenderBattles Battle[]      @relation("DefenderCombatant")
+  battleRounds    BattleRound[]
+
+  @@map("combatants")
+}
+
+model Character {
+  id              String    @id @default(uuid())
+  combatantId     String    @unique
+  combatant       Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String    @unique
+  level           Int       @default(1)
+  experience      BigInt    @default(0)
+  gold            BigInt    @default(0)
+  reputation      Int       @default(0)
+  currentHp       Int?
+  healthUpdatedAt DateTime  @default(now())
+  avatarUrl       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  transactions     Transaction[]
+  missionProgress  MissionProgress?
+  missionAttempts  MissionAttempt[]
+  ledGuild         Guild?           @relation("GuildLeader")
+  guildMembership  GuildMember?
+  startedGuildWars GuildWar[]       @relation("GuildWarStarter")
+  property         Property?
+
+  @@map("characters")
+}
+
+// Przeciwnik PvE, zarzadzany przez panel administracyjny (sekcja 3:
+// "CRUD do zarzadzania... botami"). Korzysta z tych samych tabel
+// CombatantStats/InventoryItem/EquippedItem co gracz.
+model Bot {
+  id          String    @id @default(uuid())
+  combatantId String    @unique
+  combatant   Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  name        String
+  level       Int       @default(1)
+  expReward   Int       @default(0)
+  goldReward  Int       @default(0)
+  // Pozwala administracji wylaczyc bota z puli przeciwnikow bez
+  // usuwania go (i bez utraty historii walk, ktore sie do niego odwoluja).
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("bots")
+}
+
+model CombatantStats {
+  combatantId   String    @id
+  combatant     Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  strength      Int       @default(5)
+  agility       Int       @default(5)
+  endurance     Int       @default(5)
+  intelligence  Int       @default(5)
+  unspentPoints Int       @default(0)
+  // Bazowa zdolnosc do parowania ciosow - trwaly staty, modyfikowany
+  // dodatkowo przez parryBonus z zalozonego ekwipunku (patrz Item.parryBonus).
+  parryRating   Int       @default(0)
+  updatedAt     DateTime  @updatedAt
+
+  @@map("combatant_stats")
+}
+
+// ---------------------------------------------------------------------
+// Obszar: Item + Inventory + EquippedItem (etap projektowania ERD 2/N)
+// ---------------------------------------------------------------------
+
+enum ItemCategory {
+  WEAPON
+  SHIELD_SIGIL
+  ARMOR
+  ACCESSORY
+  SPECIAL
+  CONSUMABLE
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+// Ranga wyposazenia wynikajaca z wymaganego poziomu. Progi odpowiadaja
+// klasycznej progresji High Five, ale w interfejsie uzywamy polskiej nazwy.
+enum ItemGrade {
+  NO_GRADE
+  D
+  C
+  B
+  A
+  S
+  RUNIC
+  ANCIENT
+}
+
+// Ogolny typ przedmiotu - okresla, do jakiej GRUPY slotow pasuje item.
+// Rozne od EquipmentSlot: SlotGroup.RING moze trafic do EquipmentSlot.RING_1
+// LUB EquipmentSlot.RING_2 - wybor konkretnej instancji naleznosci do gracza
+// (walidowane w warstwie serwisu, nie na poziomie bazy danych).
+enum SlotGroup {
+  WEAPON
+  SHIELD_SIGIL
+  HELM
+  UPPER_BODY
+  LOWER_BODY
+  GLOVES
+  BOOTS
+  CLOAK
+  SHIRT
+  NECKLACE
+  EARRING
+  RING
+  BELT
+  BRACELET
+  BROOCH
+  HAIR_ACCESSORY
+}
+
+// Konkretne, fizyczne sloty na postaci (18 slotow lacznie).
+enum EquipmentSlot {
+  WEAPON
+  SHIELD_SIGIL
+  HELM
+  UPPER_BODY
+  LOWER_BODY
+  GLOVES
+  BOOTS
+  CLOAK
+  SHIRT
+  NECKLACE
+  EARRING_1
+  EARRING_2
+  RING_1
+  RING_2
+  BELT
+  BRACELET
+  BROOCH
+  HAIR_ACCESSORY
+}
+
+// Podzial broni na typy - kazdy typ ma niezaleznie rosnaca ekspertyze
+// per Combatant (patrz CombatantWeaponExpertise). Tylko Item.category =
+// WEAPON wypelnia to pole.
+enum WeaponType {
+  SWORD
+  AXE
+  DAGGER
+  BOW
+  BLUNT
+  POLEARM
+  STAFF
+}
+
+model Item {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  category    ItemCategory
+  rarity      ItemRarity   @default(COMMON)
+  grade       ItemGrade    @default(NO_GRADE)
+  // Null dla konsumpcji (np. mikstury), wymagane dla ekwipunku.
+  slotGroup   SlotGroup?
+  // Wypelnione wylacznie gdy category = WEAPON.
+  weaponType  WeaponType?
+  // 1 dla nie-stackowalnego ekwipunku, >1 dla stackowalnych konsumpcji.
+  maxStack    Int          @default(1)
+  price       Int          @default(0)
+  iconUrl     String?
+  // Minimalny poziom postaci wymagany, zeby przedmiot byl widoczny/mozliwy
+  // do kupienia w sklepie (patrz ShopEntry oraz obszar 6/N).
+  minLevel    Int          @default(1)
+
+  // Stale bonusy statystyk - decyzja: jeden przedmiot = jeden zestaw
+  // statystyk (bez losowosci przy dropie).
+  strengthBonus       Int @default(0)
+  agilityBonus        Int @default(0)
+  enduranceBonus      Int @default(0)
+  intelligenceBonus   Int @default(0)
+  attackPower         Int @default(0)
+  // Zakres bazowych obrazen broni. attackPower pozostaje wartoscia
+  // posrednia dla kompatybilnosci panelu administracyjnego.
+  damageMin           Int @default(0)
+  damageMax           Int @default(0)
+  defensePower        Int @default(0)
+  // Bonus do CombatantStats.parryRating - typowo > 0 dla tarcz/sigili.
+  parryBonus          Int @default(0)
+  maxHpBonus          Int @default(0)
+  // Stale punkty procentowe szansy na trafienie krytyczne.
+  criticalChanceBonus Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryEntries InventoryItem[]
+  equippedEntries  EquippedItem[]
+  shopEntries      ShopEntry[]
+  missionRewards   MissionAttempt[]
+
+  @@map("items")
+}
+
+// Ekwipunek - stackowalne wiersze (1 wiersz = 1 typ przedmiotu + ilosc).
+// Nalezy do Combatant (dziala identycznie dla gracza i bota).
+model InventoryItem {
+  id          String    @id @default(uuid())
+  combatantId String
+  combatant   Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        Item      @relation(fields: [itemId], references: [id])
+  quantity    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([combatantId, itemId])
+  @@map("inventory_items")
+}
+
+// Zalozony przedmiot w konkretnym, fizycznym slocie. PK zlozony
+// (combatantId, slot) gwarantuje jeden przedmiot na slot naraz.
+model EquippedItem {
+  combatantId String
+  combatant   Combatant     @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  slot        EquipmentSlot
+  itemId      String
+  item        Item          @relation(fields: [itemId], references: [id])
+  equippedAt  DateTime      @default(now())
+
+  @@id([combatantId, slot])
+  @@map("equipped_items")
+}
+
+// ---------------------------------------------------------------------
+// Obszar: CombatantWeaponExpertise (etap projektowania ERD 3/N)
+// Zdecydowano: brak systemu umiejetnosci (Skill/CharacterSkill) na tym
+// etapie - autoattack oparty o staty, ekwipunek i ekspertyze broni.
+// ---------------------------------------------------------------------
+
+model CombatantWeaponExpertise {
+  combatantId String
+  combatant   Combatant  @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  weaponType  WeaponType
+  experience  Int        @default(0)
+  level       Int        @default(1)
+  updatedAt   DateTime   @updatedAt
+
+  @@id([combatantId, weaponType])
+  @@map("combatant_weapon_expertise")
+}
+
+// ---------------------------------------------------------------------
+// Obszar: Battle + BattleRound (etap projektowania ERD 5/N)
+//
+// Decyzje: PvP asynchroniczne (atak rozstrzygany natychmiast, obronca
+// nie musi byc online); log walki jako osobna, relacyjna tabela
+// BattleRound (runda po rundzie), zamiast kolumny JSON.
+// ---------------------------------------------------------------------
+
+enum BattleType {
+  PVE
+  PVP
+}
+
+enum BattleResult {
+  ATTACKER_WIN
+  DEFENDER_WIN
+  DRAW
+}
+
+enum BattleActionType {
+  HIT
+  CRITICAL_HIT
+  MISS
+  PARRIED
+}
+
+// Pojedyncze starcie - rozstrzygane natychmiast, jednym obliczeniem
+// (silnik walki, etap 6), niezaleznie od tego czy defender jest online.
+model Battle {
+  id         String       @id @default(uuid())
+  type       BattleType
+  attackerId String
+  attacker   Combatant    @relation("AttackerCombatant", fields: [attackerId], references: [id])
+  defenderId String
+  defender   Combatant    @relation("DefenderCombatant", fields: [defenderId], references: [id])
+  result     BattleResult
+  expReward  Int          @default(0)
+  goldReward Int          @default(0)
+  startedAt  DateTime     @default(now())
+  finishedAt DateTime?
+
+  rounds BattleRound[]
+
+  @@map("battles")
+}
+
+// Pojedyncza runda/wymiana ciosow w ramach walki - relacyjny log,
+// pozwala latwo analizowac statystyki (np. sredni % trafien krytycznych)
+// bez parsowania JSON-a.
+model BattleRound {
+  id            String           @id @default(uuid())
+  battleId      String
+  battle        Battle           @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  roundNumber   Int
+  actorId       String
+  actor         Combatant        @relation(fields: [actorId], references: [id])
+  actionType    BattleActionType
+  damageDealt   Int              @default(0)
+  actorHpAfter  Int?
+  targetHpAfter Int?
+
+  @@unique([battleId, roundNumber, actorId])
+  @@map("battle_rounds")
+}
+
+// ---------------------------------------------------------------------
+// Obszar: Transaction + ShopEntry (etap projektowania ERD 6/N)
+//
+// Decyzje: sklep ma codziennie inna, losowo dobierana pule przedmiotow
+// (ShopEntry generowany przez zadanie cykliczne - poza zakresem ERD,
+// implementacja w warstwie serwisu/CRON). Przedmioty odblokowuja sie
+// dla gracza wg Item.minLevel vs Character.level. Kazda zmiana zlota
+// (zakup, nagroda za walke, w przyszlosci: misje, wojny gildii) trafia
+// do Transaction jako trwaly log audytowy.
+// ---------------------------------------------------------------------
+
+enum TransactionType {
+  SHOP_PURCHASE
+  BATTLE_REWARD
+  QUEST_REWARD
+  GUILD_WAR_REWARD
+  PROPERTY_PURCHASE
+  PROPERTY_UPGRADE
+  PROPERTY_INCOME
+  PROPERTY_RESTORATION
+  ADMIN_ADJUSTMENT
+  ITEM_SALE
+}
+
+enum MissionResult {
+  SUCCESS
+  FAILURE
+}
+
+enum MissionMorality {
+  GOOD
+  EVIL
+}
+
+model MissionProgress {
+  characterId           String    @id
+  character             Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  totalMissions         Int       @default(0)
+  missionsSinceTierFive Int       @default(0)
+  updatedAt             DateTime  @updatedAt
+
+  @@map("mission_progress")
+}
+
+model MissionAttempt {
+  id                String           @id @default(uuid())
+  characterId       String
+  character         Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tier              Int
+  title             String
+  description       String
+  outcomeText       String
+  result            MissionResult
+  morality          MissionMorality?
+  choiceTitle       String?
+  choiceDescription String?
+  reputationChange  Int              @default(0)
+  goldReward        BigInt           @default(0)
+  experienceReward  BigInt           @default(0)
+  hpLost            Int
+  rewardItemId      String?
+  rewardItem        Item?            @relation(fields: [rewardItemId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+
+  @@index([characterId, createdAt])
+  @@map("mission_attempts")
+}
+
+enum GuildMemberRole {
+  LEADER
+  MEMBER
+}
+
+enum GuildWarStatus {
+  ACTIVE
+  FINISHED
+}
+
+// Log kazdej zmiany zlota postaci - niezmienny (append-only), niezalezny
+// od tego, czy encja, do ktorej sie odnosi (Battle, ShopEntry...) nadal
+// istnieje. Celowo BEZ twardego klucza obcego w referenceId - to
+// polimorficzne odniesienie (raz do Battle.id, raz do ShopEntry.id),
+// a dla logu audytowego waznniejsza jest trwalosc wpisu niz
+// referencyjna integralnosc do zrodla (opisac jako swiadomy kompromis
+// w rozdziale o modelu danych).
+model Transaction {
+  id           String          @id @default(uuid())
+  characterId  String
+  character    Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type         TransactionType
+  // Dodatnie = przychod (nagroda), ujemne = wydatek (zakup).
+  amount       BigInt
+  // Stan zlota PO tej transakcji - denormalizacja ulatwiajaca audyt
+  // bez przeliczania calej historii od zera.
+  balanceAfter BigInt
+  // Luzne odniesienie do zrodla transakcji (np. Battle.id, ShopEntry.id) -
+  // patrz komentarz nad modelem.
+  referenceId  String?
+  description  String?
+  createdAt    DateTime        @default(now())
+
+  @@index([characterId, createdAt])
+  @@map("transactions")
+}
+
+// Codzienna oferta sklepu - jeden wiersz = jeden przedmiot dostepny
+// danego dnia. Generowane przez zadanie cykliczne (CRON), poza zakresem
+// modelu danych. Widocznosc/mozliwosc zakupu przez konkretna postac
+// zalezy dodatkowo od Item.minLevel <= Character.level (walidowane w
+// warstwie serwisu przy GET listy ofert i przy POST zakupu).
+model ShopEntry {
+  id              String   @id @default(uuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id])
+  // Dzien, w ktorym oferta jest aktywna (bez czesci czasowej).
+  offerDate       DateTime @db.Date
+  // Null = cena rowna Item.price; wypelnione = promocja/inna cena danego dnia.
+  priceOverride   Int?
+  // Wylosowany procent rabatu; przechowywany dla wiernego wyswietlania
+  // oferty i audytu niezaleznie od zaokraglenia ceny.
+  discountPercent Int?
+  // Null = bez limitu ilosciowego danego dnia.
+  stockLimit      Int?
+  quantitySold    Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([itemId, offerDate])
+  @@map("shop_entries")
+}
+
+// Podstawowa gildia: nazwa, opis i lider powiazany z postacia gracza.
+model Guild {
+  id                String        @id @default(uuid())
+  name              String        @unique
+  description       String?
+  leaderCharacterId String        @unique
+  leaderCharacter   Character     @relation("GuildLeader", fields: [leaderCharacterId], references: [id], onDelete: Restrict)
+  members           GuildMember[]
+  warsAsAttacker    GuildWar[]    @relation("GuildWarAttacker")
+  warsAsDefender    GuildWar[]    @relation("GuildWarDefender")
+  wonWars           GuildWar[]    @relation("GuildWarWinner")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("guilds")
+}
+
+// Czlonkostwo w gildii - jedna postac moze nalezec do najwyzej jednej gildii.
+model GuildMember {
+  id          String          @id @default(uuid())
+  guildId     String
+  guild       Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  characterId String          @unique
+  character   Character       @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  role        GuildMemberRole @default(MEMBER)
+  joinedAt    DateTime        @default(now())
+
+  @@index([guildId])
+  @@map("guild_members")
+}
+
+// Wojna gildii - zapis walki dwoch gildii z mozliwoscia wskazania
+// zwyciezcy i zamkniecia starcia w historii.
+model GuildWar {
+  id                   String         @id @default(uuid())
+  attackerGuildId      String
+  attackerGuild        Guild          @relation("GuildWarAttacker", fields: [attackerGuildId], references: [id], onDelete: Cascade)
+  defenderGuildId      String
+  defenderGuild        Guild          @relation("GuildWarDefender", fields: [defenderGuildId], references: [id], onDelete: Cascade)
+  startedByCharacterId String
+  startedByCharacter   Character      @relation("GuildWarStarter", fields: [startedByCharacterId], references: [id], onDelete: Restrict)
+  winnerGuildId        String?
+  winnerGuild          Guild?         @relation("GuildWarWinner", fields: [winnerGuildId], references: [id], onDelete: SetNull)
+  status               GuildWarStatus @default(ACTIVE)
+  summary              String?
+  startedAt            DateTime       @default(now())
+  finishedAt           DateTime?
+
+  @@index([status, startedAt])
+  @@index([attackerGuildId, defenderGuildId])
+  @@map("guild_wars")
+}
+
+// Posiadlosc gracza - jeden gospodarczy byt na jedna postac, z poziomem
+// rozbudowy i akumulowanym dochodem dziennym do odebrania recznie.
+model Property {
+  id              String    @id @default(uuid())
+  characterId     String    @unique
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  level           Int       @default(1)
+  baseIncome      Int       @default(100)
+  lastCollectedAt DateTime  @default(now())
+  lastRestoredAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  upgrades PropertyUpgrade[]
+
+  @@index([level])
+  @@map("properties")
+}
+
+// Historia rozbudowy posiadlosci - kazdy upgrade zapisuje nowy poziom,
+// koszt i wartosc dochodu po ulepszeniu.
+model PropertyUpgrade {
+  id          String   @id @default(uuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  fromLevel   Int
+  toLevel     Int
+  goldCost    Int
+  incomeAfter Int
+  upgradedAt  DateTime @default(now())
+
+  @@index([propertyId, upgradedAt])
+  @@map("property_upgrades")
+}

@@ -1,0 +1,9 @@
+-- CreateEnum
+CREATE TYPE "ItemRarity" AS ENUM ('COMMON', 'UNCOMMON', 'RARE', 'EPIC');
+
+-- AlterTable
+ALTER TABLE "items" ADD COLUMN     "criticalChanceBonus" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "damageMax" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "damageMin" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "maxHpBonus" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "rarity" "ItemRarity" NOT NULL DEFAULT 'COMMON';

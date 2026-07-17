@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kroniki Etherii — prezentacja funkcji</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #070b0f; color: #d8cfbd; font: 16px/1.55 Georgia, serif; }
+    main { width: min(1400px, 100%); margin: auto; padding: 40px; }
+    header { min-height: 72vh; display: grid; align-content: center; border: 1px solid #6e4a20; padding: 7vw; background: radial-gradient(circle at 50% 20%, #192530, #070b0f 58%); text-align: center; page-break-after: always; }
+    header small, figure small { color: #b17b31; letter-spacing: .28em; text-transform: uppercase; }
+    h1 { margin: 12px 0; color: #f1deb4; font-size: clamp(48px, 8vw, 108px); font-weight: 400; letter-spacing: .08em; }
+    header p { max-width: 780px; margin: 12px auto; color: #918a7e; font-size: 20px; }
+    figure { margin: 0 0 44px; border: 1px solid #62441f; padding: 18px; background: #0b1116; page-break-inside: avoid; page-break-after: always; }
+    figure img { display: block; width: 100%; border: 1px solid #2f2a21; }
+    figcaption { padding: 20px 8px 4px; }
+    h2 { margin: 5px 0 8px; color: #ead6ac; font-size: 30px; font-weight: 400; }
+    figcaption p { margin: 0; color: #9b958b; }
+    .architecture { border: 1px solid #62441f; padding: 32px; background: #0b1116; page-break-inside: avoid; }
+    .architecture ul { columns: 2; padding-left: 20px; }
+    @media print { body { background: white; } main { padding: 0; } figure, .architecture { min-height: 175mm; display: grid; align-content: center; } }
+  </style>
+</head>
+<body><main>
+  <header><small>Projekt inżynierski</small><h1>Kroniki Etherii</h1><p>Przeglądarkowa gra RPG z rozwojem bohatera, ekonomią, wyprawami, reputacją i symulacją walki.</p></header>
+  <figure><img src="screenshots/01-logowanie.png" alt="Ekran logowania"><figcaption><small>Uwierzytelnianie</small><h2>Logowanie i rejestracja</h2><p>Osobny ekran wejścia do gry, bezpieczne haszowanie haseł oraz sesja oparta na krótkotrwałym tokenie dostępu i rotowanym tokenie odświeżania.</p></figcaption></figure>
+  <figure><img src="screenshots/02-twierdza.png" alt="Twierdza bohatera"><figcaption><small>Panel główny</small><h2>Twierdza i rozwój bohatera</h2><p>Poziom, doświadczenie, złoto, HP, reputacja oraz atrybuty bojowe są prezentowane w jednym spójnym panelu. Po awansie gracz rozdziela zdobyte punkty nauki.</p></figcaption></figure>
+  <figure><img src="screenshots/03-zbrojownia.png" alt="Zbrojownia"><figcaption><small>Ekwipunek</small><h2>Plecak i zbrojownia</h2><p>Przedmioty posiadają poziom, rangę, rzadkość i statystyki. System pilnuje fizycznych slotów wyposażenia, obsługuje zamianę przedmiotów i sprzedaż z potwierdzeniem.</p></figcaption></figure>
+  <figure><img src="screenshots/04-targowisko.png" alt="Targowisko"><figcaption><small>Ekonomia</small><h2>Losowa oferta targowiska</h2><p>Codzienna oferta wykorzystuje ważone rabaty i szanse rzadkości. Niedostępny zakup blokuje wyłącznie przycisk, pozostawiając wygląd oraz parametry przedmiotu widoczne.</p></figcaption></figure>
+  <figure><img src="screenshots/05-kupiec.png" alt="Kupiec"><figcaption><small>Katalog</small><h2>Stała oferta kupca</h2><p>Pełny katalog przedmiotów podzielono na kategorie, rangi poziomowe i strony. Ceny rosną wraz z rangą oraz rzadkością wyposażenia.</p></figcaption></figure>
+  <figure><img src="screenshots/06-wyprawy.png" alt="Wyprawy"><figcaption><small>PvE i reputacja</small><h2>Wyprawy bohatera</h2><p>Pięć losowanych stopni ryzyka skaluje złoto, doświadczenie i utratę HP. Wybór szlachetnej lub mrocznej drogi przesuwa reputację, a wynik otrzymuje pełnoekranową prezentację.</p></figcaption></figure>
+  <figure><img src="screenshots/07-arena.png" alt="Arena"><figcaption><small>Silnik walki</small><h2>Arena i dobieranie przeciwnika</h2><p>System szuka bota o zbliżonym poziomie i sile bojowej. Walka jest obliczana przez wspólny silnik, zapisywana runda po rundzie i odtwarzana z paskami HP, krytykami, pudłami oraz parowaniem.</p></figcaption></figure>
+  <section class="architecture"><small>Architektura</small><h2>Technologie i jakość</h2><ul><li>React i TypeScript</li><li>NestJS i Prisma ORM</li><li>PostgreSQL i Redis</li><li>Docker Compose</li><li>Relacyjny zapis rund walki</li><li>Transakcje ekonomiczne</li><li>Walidacja danych wejściowych</li><li>Rate limiting i cooldowny</li><li>Responsywny interfejs</li><li>Automatyczne migracje i dane początkowe</li></ul></section>
+</main></body></html>

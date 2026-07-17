@@ -1,0 +1,7 @@
+﻿docker : --progress is a global compose flag, better use `docker compose --progress xx build ...
+At line:1 char:32
++ ... g-project"; docker compose build backend --progress plain 2>&1 | Out- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (--progress is a...ss xx build ...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

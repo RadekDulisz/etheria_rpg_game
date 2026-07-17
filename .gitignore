@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+.DS_Store
+
+# Exclude docs and AI instruction assets from repository snapshot
+docs/
+.agents/
+.github/copilot-instructions.md
+**/*instructions*.md
+**/*.prompt.md
+**/*.agent.md
+**/AGENTS.md
+**/SKILL.md

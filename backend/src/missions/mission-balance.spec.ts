@@ -26,6 +26,13 @@ describe('mission balance', () => {
     expect(highLevel.experienceMax).toBeLessThan(40 * 100);
   });
 
+  it('makes legendary expeditions substantially more rewarding than repeatable arena fights', () => {
+    const legendary = missionRanges(MISSION_TIERS[4], 10);
+    expect(legendary.goldMin).toBe(288);
+    expect(legendary.goldMax).toBe(438);
+    expect(legendary.itemRewardChance).toBe(15);
+  });
+
   it('limits experience rewards to the reduced range of 1–9% of a level', () => {
     expect(missionRanges(MISSION_TIERS[0], 20).experienceMin).toBe(20);
     expect(missionRanges(MISSION_TIERS[0], 20).experienceMax).toBe(30);

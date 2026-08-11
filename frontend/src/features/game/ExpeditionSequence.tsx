@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BrandLogo } from '../../components/ui/BrandLogo';
-import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
+import { GemIcon } from '../../components/ui/GemIcon';
 import { ItemIcon } from '../../components/ui/ItemIcon';
-import { formatInteger } from '../../lib/formatters';
+import { RewardCascade, type RewardCascadeEntry } from '../../components/ui/RewardCascade';
 import type { MissionResult } from '../../types/game';
 
 const DURATION_BY_TIER: Record<number, number> = {
@@ -81,7 +81,7 @@ export function ExpeditionSequence({ result, onComplete }: ExpeditionSequencePro
     const swapTimer = window.setTimeout(() => {
       setDisplayedBeatIndex(beatIndex);
       window.requestAnimationFrame(() => setTextVisible(true));
-    }, 360);
+    }, 620);
     return () => window.clearTimeout(swapTimer);
   }, [beatIndex, displayedBeatIndex, phase, result]);
 
@@ -108,7 +108,13 @@ export function ExpeditionSequence({ result, onComplete }: ExpeditionSequencePro
 
       {phase === 'journey' ? <main className="expedition-sequence-content">
         <p className="expedition-sequence-kicker">{result ? `${result.title} · ${result.choiceTitle ?? 'Wybrana droga'}` : 'Los prowadzi bohatera w nieznane'}</p>
-        <h1 className={`expedition-story-beat ${textVisible ? 'expedition-story-beat-visible' : 'expedition-story-beat-hidden'}`}>{result ? beats[displayedBeatIndex] : 'Bramy Etherii otwierają się…'}</h1>
+        <div className="expedition-story-beat-stage">
+          <h1
+            className={`expedition-story-beat ${textVisible ? 'expedition-story-beat-visible' : 'expedition-story-beat-hidden'}`}
+          >
+            {result ? beats[displayedBeatIndex] : 'Bramy Etherii otwierają się…'}
+          </h1>
+        </div>
         <p className="expedition-sequence-description">
           {result ? result.choiceDescription ?? result.description : 'Zwiadowcy wybierają drogę, z której nie każdy powraca.'}
         </p>
@@ -122,19 +128,42 @@ export function ExpeditionSequence({ result, onComplete }: ExpeditionSequencePro
         </div>
 
         <p className="expedition-sequence-warning">Nie opuszczaj szlaku. Wynik zostanie odsłonięty po zakończeniu wyprawy.</p>
-      </main> : result ? <main className={`expedition-result-screen expedition-result-${won ? 'success' : 'failure'}`}>
-        <div className="expedition-result-verdict" role="status"><span>{won ? 'SUKCES' : 'PORAŻKA'}</span></div>
-        <p className="expedition-result-kicker">{won ? 'Wieść o czynie dotrze do Etherii' : 'Szlak zachował swoją tajemnicę'}</p>
-        <h1>{result.title}</h1>
-        <p className="expedition-result-outcome">{result.outcomeText}</p>
-        <div className="expedition-result-rewards">
-          <article><strong>{won ? <CurrencyAmount value={result.goldReward} compact /> : '0'}</strong><span>Złoto</span></article>
-          <article><strong>{formatInteger(result.experienceReward)} XP</strong><span>Doświadczenie</span></article>
-          <article className="expedition-result-damage"><strong>−{result.hpLost} HP</strong><span>Odniesione rany</span></article>
-          <article className={result.reputationChange > 0 ? 'expedition-result-reputation-good' : 'expedition-result-reputation-evil'}><strong>{result.reputationChange > 0 ? '+' : ''}{result.reputationChange} REP</strong><span style={{ color: result.reputationRank.color }}>{result.reputationRank.name}</span></article>
-          {result.rewardItem ? <article className="expedition-result-item"><i><ItemIcon item={result.rewardItem} /></i><div><strong>Zdobyto przedmiot</strong><span>{result.rewardItem.name}</span></div></article> : null}
+      </main> : result ? <main className={`arena-result-screen expedition-arena-result arena-result-${won ? 'victory' : 'defeat'}`}>
+        <p>{won ? 'Wieść o czynie dotrze do Etherii' : 'Szlak zachował swoją tajemnicę'}</p>
+        <h1 role="status">{won ? 'SUKCES' : 'PORAŻKA'}</h1>
+        <h2>{result.title}</h2>
+        <RewardCascade
+          className="arena-reward-cascade expedition-reward-cascade"
+          initialDelay={550}
+          stepDelay={540}
+          entries={[
+            { kind: 'gold', label: 'Złoto', value: won ? Number(result.goldReward) : 0 },
+            { kind: 'xp', label: 'Doświadczenie', value: Number(result.experienceReward) },
+            { kind: 'damage', label: 'Odniesione rany', prefix: '−', value: result.hpLost },
+            {
+              kind: 'reputation',
+              label: result.reputationRank.name,
+              prefix: result.reputationChange > 0 ? '+' : result.reputationChange < 0 ? '−' : '',
+              value: Math.abs(result.reputationChange),
+            },
+            ...(result.rewardItem ? [{
+              kind: 'item',
+              label: 'Zdobyto przedmiot',
+              value: result.rewardItem.name,
+              icon: <ItemIcon item={result.rewardItem} />,
+            } satisfies RewardCascadeEntry] : []),
+            ...(result.rewardGemDefinition ? [{
+              kind: 'item',
+              label: 'Zdobyto klejnot',
+              value: result.rewardGemDefinition.name,
+              icon: <GemIcon gem={result.rewardGemDefinition} />,
+            } satisfies RewardCascadeEntry] : []),
+          ]}
+        />
+        <div className="expedition-arena-summary">
+          <p className="expedition-result-outcome">{result.outcomeText}</p>
         </div>
-        <button className="expedition-result-return" type="button" onClick={() => onCompleteRef.current()}>Wróć do kroniki</button>
+        <button className="arena-result-return expedition-result-return" type="button" onClick={() => onCompleteRef.current()}>Wróć do kroniki</button>
       </main> : null}
 
       {phase === 'journey' ? <footer className="expedition-sequence-footer">

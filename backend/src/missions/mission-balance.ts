@@ -7,14 +7,15 @@ export interface MissionTierBalance {
   gold: { baseMin: number; perLevelMin: number; baseMax: number; perLevelMax: number };
   xpPercent: { min: number; max: number };
   hpPercent: { min: number; max: number };
+  itemChance: number;
 }
 
 export const MISSION_TIERS: MissionTierBalance[] = [
-  { tier: 1, name: 'Zlecenie przydrożne', chance: 45, gold: { baseMin: 4, perLevelMin: 2, baseMax: 7, perLevelMax: 3 }, xpPercent: { min: 1, max: 1.5 }, hpPercent: { min: 5, max: 8 } },
-  { tier: 2, name: 'Wyprawa zwiadowcza', chance: 28, gold: { baseMin: 7, perLevelMin: 3, baseMax: 12, perLevelMax: 4 }, xpPercent: { min: 2, max: 2.5 }, hpPercent: { min: 9, max: 14 } },
-  { tier: 3, name: 'Niebezpieczna wyprawa', chance: 15, gold: { baseMin: 12, perLevelMin: 4, baseMax: 20, perLevelMax: 6 }, xpPercent: { min: 3, max: 4 }, hpPercent: { min: 15, max: 22 } },
-  { tier: 4, name: 'Wyprawa wysokiego ryzyka', chance: 8, gold: { baseMin: 20, perLevelMin: 6, baseMax: 32, perLevelMax: 8 }, xpPercent: { min: 4.5, max: 6 }, hpPercent: { min: 24, max: 34 } },
-  { tier: 5, name: 'Wyprawa legendarna', chance: 4, gold: { baseMin: 35, perLevelMin: 8, baseMax: 55, perLevelMax: 12 }, xpPercent: { min: 7, max: 9 }, hpPercent: { min: 38, max: 50 } },
+  { tier: 1, name: 'Zlecenie przydrożne', chance: 45, gold: { baseMin: 5, perLevelMin: 3, baseMax: 9, perLevelMax: 4 }, xpPercent: { min: 1, max: 1.5 }, hpPercent: { min: 4, max: 7 }, itemChance: 4 },
+  { tier: 2, name: 'Wyprawa zwiadowcza', chance: 28, gold: { baseMin: 11, perLevelMin: 5, baseMax: 18, perLevelMax: 6 }, xpPercent: { min: 2, max: 2.5 }, hpPercent: { min: 8, max: 12 }, itemChance: 6 },
+  { tier: 3, name: 'Niebezpieczna wyprawa', chance: 15, gold: { baseMin: 21, perLevelMin: 7, baseMax: 35, perLevelMax: 10 }, xpPercent: { min: 3, max: 4 }, hpPercent: { min: 13, max: 19 }, itemChance: 8 },
+  { tier: 4, name: 'Wyprawa wysokiego ryzyka', chance: 8, gold: { baseMin: 40, perLevelMin: 12, baseMax: 64, perLevelMax: 16 }, xpPercent: { min: 4.5, max: 6 }, hpPercent: { min: 20, max: 29 }, itemChance: 11 },
+  { tier: 5, name: 'Wyprawa legendarna', chance: 4, gold: { baseMin: 88, perLevelMin: 20, baseMax: 138, perLevelMax: 30 }, xpPercent: { min: 7, max: 9 }, hpPercent: { min: 32, max: 44 }, itemChance: 15 },
 ];
 
 export function missionRanges(tier: MissionTierBalance, level: number) {
@@ -26,6 +27,7 @@ export function missionRanges(tier: MissionTierBalance, level: number) {
     experienceMax: Math.max(1, Math.floor(requiredXp * tier.xpPercent.max / 100)),
     hpPercentMin: tier.hpPercent.min,
     hpPercentMax: tier.hpPercent.max,
+    itemRewardChance: tier.itemChance,
   };
 }
 

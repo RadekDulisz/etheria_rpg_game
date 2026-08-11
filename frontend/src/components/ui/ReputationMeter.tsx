@@ -5,9 +5,10 @@ interface ReputationMeterProps {
   compact?: boolean;
   rank?: string;
   rankColor?: string;
+  showRank?: boolean;
 }
 
-export function ReputationMeter({ value, compact = false, rank = 'Neutralny', rankColor = '#8f8a82' }: ReputationMeterProps) {
+export function ReputationMeter({ value, compact = false, rank = 'Neutralny', rankColor = '#8f8a82', showRank = true }: ReputationMeterProps) {
   const accessibleValue = Math.max(-REPUTATION_VISUAL_LIMIT, Math.min(REPUTATION_VISUAL_LIMIT, value));
   const markerPosition = ((accessibleValue + REPUTATION_VISUAL_LIMIT) / (REPUTATION_VISUAL_LIMIT * 2)) * 100;
   const fillStart = Math.min(50, markerPosition);
@@ -31,7 +32,7 @@ export function ReputationMeter({ value, compact = false, rank = 'Neutralny', ra
         <span className={`reputation-marker ${evil ? 'reputation-marker-evil' : value > 0 ? 'reputation-marker-good' : 'reputation-marker-neutral'}`} style={{ left: `${markerPosition}%`, color: rankColor, boxShadow: `0 0 7px ${rankColor}bf, inset 0 0 3px ${rankColor}80` }} />
         <span className="meter-tooltip game-number">{reputationLabel}</span>
       </div>
-      {!compact ? <><div className="mt-1.5 flex justify-between text-[0.6rem] uppercase tracking-[0.12em]"><span className="text-red-300/70">Zły</span><span className="text-stone-500">Neutralny</span><span className="text-blue-300/75">Dobry</span></div><p className="mt-2 text-center text-[0.62rem] uppercase tracking-[0.16em]" style={{ color: rankColor }}>{rank}</p></> : null}
+      {!compact ? <><div className="mt-1.5 flex justify-between text-[0.6rem] uppercase tracking-[0.12em]"><span className="text-red-300/70">Zły</span><span className="text-stone-500">Neutralny</span><span className="text-blue-300/75">Dobry</span></div>{showRank ? <p className="mt-2 text-center text-[0.62rem] uppercase tracking-[0.16em]" style={{ color: rankColor }}>{rank}</p> : null}</> : null}
     </div>
   );
 }

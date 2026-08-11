@@ -74,7 +74,7 @@ export class AuthController {
   }
 
   @Get('session')
-  session(@Req() req: Request): { id: string; email: string; role: string } | null {
+  session(@Req() req: Request): { id: string; email: string; role: string; testToolsEnabled: boolean } | null {
     return this.authService.getSession(req.cookies?.[ACCESS_COOKIE]);
   }
 

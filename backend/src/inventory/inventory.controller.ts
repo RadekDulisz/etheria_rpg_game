@@ -26,6 +26,11 @@ export class InventoryController {
     return this.inventoryService.getInventory(user.sub);
   }
 
+  @Get('inventory/gems')
+  getGems(@CurrentUser() user: JwtPayload) {
+    return this.inventoryService.getGems(user.sub);
+  }
+
   @Get('equipment')
   getEquipment(@CurrentUser() user: JwtPayload) {
     return this.inventoryService.getEquipment(user.sub);
@@ -33,16 +38,16 @@ export class InventoryController {
 
   @Post('equipment')
   equip(@CurrentUser() user: JwtPayload, @Body() dto: EquipItemDto) {
-    return this.inventoryService.equipItem(user.sub, dto.itemId, dto.slot);
+    return this.inventoryService.equipItem(user.sub, dto.ownedItemId, dto.slot);
   }
 
-  @Post('inventory/:itemId/sell')
+  @Post('inventory/:ownedItemId/sell')
   sell(
     @CurrentUser() user: JwtPayload,
-    @Param('itemId') itemId: string,
+    @Param('ownedItemId') ownedItemId: string,
     @Body() dto: SellItemDto,
   ) {
-    return this.inventoryService.sellItem(user.sub, itemId, dto.quantity);
+    return this.inventoryService.sellItem(user.sub, ownedItemId, dto.quantity);
   }
 
   @Delete('equipment/:slot')

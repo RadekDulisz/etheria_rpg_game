@@ -93,6 +93,6 @@ describe('buildCombatSnapshot', () => {
 
     const snapshot = buildCombatSnapshot('combatant-1', baseStats, items, expertise);
 
-    expect(snapshot.weaponExpertiseLevel).toBe(3);
+    expect(snapshot.weaponExpertiseLevel).toBe(2);
   });
 });

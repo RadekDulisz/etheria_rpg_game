@@ -22,6 +22,14 @@ export interface CombatSnapshot {
   criticalChanceBonus?: number;
   weaponExpertiseLevel: number;
   weaponType: WeaponType | null;
+  /** Modyfikatory spotkania używane przez kontrolowanych przeciwników PvE. */
+  hitChanceModifier?: number;
+  evasionChanceModifier?: number;
+  parryChanceModifier?: number;
+  criticalChanceModifier?: number;
+  criticalResistanceModifier?: number;
+  damageDealtMultiplier?: number;
+  damageTakenMultiplier?: number;
 }
 
 export interface AttackOutcome {

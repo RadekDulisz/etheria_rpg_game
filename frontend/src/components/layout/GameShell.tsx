@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { GameNavigation } from './GameNavigation';
 import { GameTopbar } from './GameTopbar';
 import { HeroRail } from './HeroRail';
+import { TestToolsPanel } from './TestToolsPanel';
 
 interface GameShellProps {
   character: Character;
@@ -11,6 +12,7 @@ interface GameShellProps {
   activeView: GameView;
   refreshing: boolean;
   loggingOut: boolean;
+  testToolsEnabled?: boolean;
   onNavigate: (view: GameView) => void;
   onRefresh: () => void;
   onLogout: () => void;
@@ -23,18 +25,19 @@ export function GameShell({
   activeView,
   refreshing,
   loggingOut,
+  testToolsEnabled = false,
   onNavigate,
   onRefresh,
   onLogout,
   children,
 }: GameShellProps) {
   return (
-    <div className="game-shell">
+    <div className={`game-shell ${testToolsEnabled ? 'game-shell-testing' : ''}`}>
       <GameTopbar />
       <div className="game-shell-grid">
         <aside className="game-sidebar">
           <GameNavigation activeView={activeView} onNavigate={onNavigate} />
-          <div className="mt-auto grid gap-2 border-t border-amber-700/20 p-3">
+          <div className="game-sidebar-session-actions">
             <Button variant="secondary" fullWidth onClick={onRefresh} disabled={refreshing}>
               {refreshing ? 'Odświeżanie…' : 'Odśwież sesję'}
             </Button>
@@ -47,6 +50,7 @@ export function GameShell({
         <main className="game-content">{children}</main>
         <HeroRail character={character} equipment={equipment} />
       </div>
+      {testToolsEnabled ? <TestToolsPanel character={character} /> : null}
     </div>
   );
 }

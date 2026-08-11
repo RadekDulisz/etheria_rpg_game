@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CharacterWithStats } from './characters.mapper';
 import { applyExperienceGain } from './leveling';
+import { calculateMaxHp } from '../combat/combat-formulas';
+import { resolveOwnedItemStats } from '../blacksmith/blacksmith.balance';
 
 interface StatAllocation {
   strength: number;
@@ -16,7 +18,16 @@ const CHARACTER_WITH_STATS_INCLUDE = {
   combatant: {
     include: {
       stats: true,
-      equippedItems: { include: { item: true } },
+      equippedItems: {
+        include: {
+          ownedItem: {
+            include: {
+              item: true,
+              sockets: { include: { gemDefinition: true }, orderBy: { position: 'asc' } },
+            },
+          },
+        },
+      },
       weaponExpertise: true,
     },
   },
@@ -132,11 +143,36 @@ export class CharactersService {
     }
 
     const progress = applyExperienceGain(character.level, character.experience, BigInt(amount));
+    const leveledUp = progress.level > character.level;
+    const equippedItems = character.combatant.equippedItems ?? [];
+    const enduranceAfterEquipment = character.combatant.stats.endurance
+      + equippedItems.reduce(
+        (total, equipped) => total + resolveOwnedItemStats(equipped.ownedItem).enduranceBonus,
+        0,
+      );
+    const maxHpBonus = equippedItems.reduce(
+      (total, equipped) => total + resolveOwnedItemStats(equipped.ownedItem).maxHpBonus,
+      0,
+    );
+    const maxHpAfterLevelUp = calculateMaxHp(
+      enduranceAfterEquipment,
+      progress.level,
+      maxHpBonus,
+    );
 
     await this.prisma.$transaction(async (tx) => {
       await tx.character.update({
         where: { id: characterId },
-        data: { level: progress.level, experience: progress.experience },
+        data: {
+          level: progress.level,
+          experience: progress.experience,
+          ...(leveledUp
+            ? {
+                currentHp: maxHpAfterLevelUp,
+                healthUpdatedAt: new Date(),
+              }
+            : {}),
+        },
       });
 
       if (progress.unspentPointsGained > 0) {

@@ -1,8 +1,24 @@
 import type { CatalogPage, CatalogSection, CatalogSummaryEntry, ItemGrade, ShopOffer } from '../types/game';
 import { httpClient } from './http';
 
+export interface MarketRefreshStatus {
+  refreshesUsed: number;
+  refreshesRemaining: number;
+  nextRefreshCost: number | null;
+}
+
 export async function getTodayOffers(): Promise<ShopOffer[]> {
   const response = await httpClient.get<ShopOffer[]>('/shop/today');
+  return response.data;
+}
+
+export async function getMarketRefreshStatus(): Promise<MarketRefreshStatus> {
+  const response = await httpClient.get<MarketRefreshStatus>('/shop/refresh/status');
+  return response.data;
+}
+
+export async function refreshMarketOffers(): Promise<MarketRefreshStatus> {
+  const response = await httpClient.post<MarketRefreshStatus>('/shop/refresh');
   return response.data;
 }
 

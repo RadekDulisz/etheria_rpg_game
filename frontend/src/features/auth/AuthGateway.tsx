@@ -44,8 +44,10 @@ export function AuthGateway({ worldOnline, onAuthenticated }: AuthGatewayProps) 
         <div className="gateway-story">
           <div className="gateway-hero-brand"><BrandLogo /></div>
           <div className="gateway-story-copy">
-            <p className="gateway-story-eyebrow">U bram Czarnej Cytadeli</p>
-            <h1>Twoja legenda<br />zaczyna się w mroku.</h1>
+            <div className="gateway-story-headline">
+              <p className="gateway-story-eyebrow">U bram Czarnej Cytadeli</p>
+              <h1>Twoja legenda<br />zaczyna się w mroku.</h1>
+            </div>
             <p>Przekrocz mosty Etherii, zdobądź własne imię i zapisz je pośród tych, których pamiętają kamienne kroniki.</p>
           </div>
         </div>

@@ -1,183 +1,184 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { equipItem, sellItem, unequipItem } from '../../api/inventory.api';
-import { ActionNotice } from '../../components/ui/ActionNotice';
-import { Button } from '../../components/ui/Button';
+import { ActionToast } from '../../components/ui/ActionToast';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
-import { EmptyState } from '../../components/ui/EmptyState';
 import { GamePanel } from '../../components/ui/GamePanel';
-import { ItemIcon } from '../../components/ui/ItemIcon';
-import { ItemStats } from '../../components/ui/ItemStats';
-import { GradeBadge } from '../../components/ui/GradeBadge';
 import { SectionTitle } from '../../components/ui/SectionTitle';
-import { getApiErrorMessage } from '../../lib/api-errors';
-import { formatItemType } from '../../lib/formatters';
-import type { EquipmentSlot, EquippedEntry, InventoryEntry } from '../../types/game';
-import { getCompatibleSlots, getEquipmentSlotLabel } from './equipment-slots';
+import { equipItem, sellItem, unequipItem } from '../../api/inventory.api';
+import type {
+  CharacterStats,
+  EquipmentSlot,
+  EquippedEntry,
+  GemStack,
+  InventoryEntry,
+} from '../../types/game';
+import { BackpackDetails } from './BackpackDetails';
+import { BackpackGrid } from './BackpackGrid';
+import { BackpackToolbar } from './BackpackToolbar';
+import { EquipmentGrid } from './EquipmentGrid';
+import { getCompatibleSlots } from './equipment-slots';
+import type {
+  BackpackCategory,
+  BackpackIconSize,
+  BackpackSelection,
+  BackpackSort,
+} from './backpack.types';
 
 interface InventoryViewProps {
   inventory: InventoryEntry[];
+  gems: GemStack[];
   equipment: EquippedEntry[];
+  characterStats: CharacterStats | null;
+  onOpenBlacksmith: () => void;
 }
 
-export function InventoryView({ inventory, equipment }: InventoryViewProps) {
-  const queryClient = useQueryClient();
-  const [selectedSlots, setSelectedSlots] = useState<Record<string, EquipmentSlot>>({});
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [saleToConfirm, setSaleToConfirm] = useState<InventoryEntry | null>(null);
+const RARITY_ORDER = { COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4 } as const;
 
-  async function refreshEquipmentState() {
+export function InventoryView({ inventory, gems, equipment, characterStats, onOpenBlacksmith }: InventoryViewProps) {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<BackpackCategory>('ALL');
+  const [grade, setGrade] = useState('ALL');
+  const [sort, setSort] = useState<BackpackSort>('NEWEST');
+  const [iconSize, setIconSize] = useState<BackpackIconSize>('LARGE');
+  const [selection, setSelection] = useState<BackpackSelection | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<Record<string, EquipmentSlot>>({});
+  const [saleToConfirm, setSaleToConfirm] = useState<InventoryEntry | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const normalizedSearch = search.trim().toLocaleLowerCase('pl');
+  const filteredItems = useMemo(() => inventory
+    .filter((entry) => (!normalizedSearch || entry.item.name.toLocaleLowerCase('pl').includes(normalizedSearch)))
+    .filter((entry) => grade === 'ALL' || entry.item.grade === grade)
+    .filter((entry) => category === 'ALL' || itemCategory(entry) === category)
+    .sort(itemComparator(sort)), [category, grade, inventory, normalizedSearch, sort]);
+
+  const filteredGems = useMemo(() => gems
+    .filter(() => category === 'ALL' || category === 'GEM')
+    .filter(() => grade === 'ALL')
+    .filter((stack) => !normalizedSearch || stack.gemDefinition.name.toLocaleLowerCase('pl').includes(normalizedSearch))
+    .sort((left, right) => sort === 'NAME'
+      ? left.gemDefinition.name.localeCompare(right.gemDefinition.name, 'pl')
+      : right.gemDefinition.minLevel - left.gemDefinition.minLevel), [category, gems, grade, normalizedSearch, sort]);
+
+  async function refreshInventoryState() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['inventory'] }),
       queryClient.invalidateQueries({ queryKey: ['equipment'] }),
       queryClient.invalidateQueries({ queryKey: ['character', 'me'] }),
+      queryClient.invalidateQueries({ queryKey: ['blacksmith'] }),
+      queryClient.invalidateQueries({ queryKey: ['arena', 'opponent'] }),
     ]);
   }
 
   const equipMutation = useMutation({
-    mutationFn: ({ itemId, slot }: { itemId: string; slot: EquipmentSlot; itemName: string }) => equipItem(itemId, slot),
+    mutationFn: ({ entry, slot }: { entry: InventoryEntry; slot: EquipmentSlot }) => equipItem(entry.id, slot),
     onSuccess: async (_, variables) => {
-      setSuccessMessage(`Założono: ${variables.itemName}.`);
-      await refreshEquipmentState();
+      setSuccessMessage(`Założono: ${variables.entry.item.name}.`);
+      setSelection(null);
+      await refreshInventoryState();
     },
   });
-
   const unequipMutation = useMutation({
-    mutationFn: ({ slot }: { slot: EquipmentSlot; itemName: string }) => unequipItem(slot),
-    onSuccess: async (_, variables) => {
-      setSuccessMessage(`Zdjęto: ${variables.itemName}.`);
-      await refreshEquipmentState();
+    mutationFn: (entry: EquippedEntry) => unequipItem(entry.slot as EquipmentSlot),
+    onSuccess: async (_, entry) => {
+      setSuccessMessage(`Zdjęto: ${entry.item.name}.`);
+      setSelection(null);
+      await refreshInventoryState();
     },
   });
-
   const sellMutation = useMutation({
-    mutationFn: ({ itemId }: { itemId: string; itemName: string }) => sellItem(itemId),
-    onSuccess: async (sale, variables) => {
+    mutationFn: (entry: InventoryEntry) => sellItem(entry.id),
+    onSuccess: async (sale, entry) => {
       setSaleToConfirm(null);
-      setSuccessMessage(`Sprzedano ${variables.itemName} za ${sale.proceeds} monet.`);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['inventory'] }),
-        queryClient.invalidateQueries({ queryKey: ['character', 'me'] }),
-      ]);
+      setSelection(null);
+      setSuccessMessage(`Sprzedano ${entry.item.name} za ${sale.proceeds} monet.`);
+      await refreshInventoryState();
     },
   });
 
+  const selectedInventory = selection?.kind === 'ITEM' ? selection.entry : null;
+  const compatibleSlots = selectedInventory ? getCompatibleSlots(selectedInventory.item.slotGroup) : [];
+  const firstFreeSlot = compatibleSlots.find((slot) => !equipment.some((entry) => entry.slot === slot));
+  const selectedSlot = selectedInventory
+    ? selectedSlots[selectedInventory.id] ?? firstFreeSlot ?? compatibleSlots[0]
+    : undefined;
   const mutationError = equipMutation.error ?? unequipMutation.error ?? sellMutation.error;
+  const busy = equipMutation.isPending || unequipMutation.isPending || sellMutation.isPending;
 
   return (
-    <div className="view-enter">
-      <SectionTitle eyebrow="Zbrojownia" title="Plecak i wyposażenie" description="Zakładaj przedmioty w odpowiednich miejscach. Zastąpiony przedmiot automatycznie wróci do plecaka." />
-      {successMessage ? <ActionNotice tone="success" onDismiss={() => setSuccessMessage(null)}>{successMessage}</ActionNotice> : null}
-      {mutationError ? <ActionNotice tone="error" onDismiss={() => { equipMutation.reset(); unequipMutation.reset(); sellMutation.reset(); }}>{getApiErrorMessage(mutationError)}</ActionNotice> : null}
+    <div className="view-enter inventory-workspace">
+      <SectionTitle eyebrow="Zbrojownia" title="Plecak i wyposażenie" description="Przeszukuj zgromadzone łupy, porównuj je z wyposażeniem i przygotuj bohatera do następnej drogi." />
+      {successMessage ? <ActionToast onDismiss={() => setSuccessMessage(null)}>{successMessage}</ActionToast> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <GamePanel title="Plecak" eyebrow={`${inventory.length} rodzajów przedmiotów`}>
-          {inventory.length ? (
-            <div className="inventory-grid">
-              {inventory.map((entry) => {
-                const rarity = entry.item.rarity.toLowerCase();
-                const compatibleSlots = getCompatibleSlots(entry.item.slotGroup);
-                const firstFreeSlot = compatibleSlots.find((slot) => !equipment.some((equipped) => equipped.slot === slot));
-                const selectedSlot = selectedSlots[entry.itemId] ?? firstFreeSlot ?? compatibleSlots[0];
-                const requiresSlotChoice = compatibleSlots.length > 1;
-                const isAlreadyEquippedInSlot = equipment.some((equipped) => equipped.slot === selectedSlot && equipped.itemId === entry.itemId);
-                const isEquipping = equipMutation.isPending && equipMutation.variables?.itemId === entry.itemId;
-                const isSelling = sellMutation.isPending && sellMutation.variables?.itemId === entry.itemId;
+      <section className="backpack-shell">
+        <header className="backpack-shell-heading">
+          <div><span>MAGAZYN BOHATERA</span><h2>Plecak</h2></div>
+          <p><strong>{inventory.length}</strong> przedmiotów <i /> <strong>{gems.reduce((sum, stack) => sum + stack.quantity, 0)}</strong> klejnotów</p>
+        </header>
 
-                return (
-                  <article key={entry.id} className={`inventory-card inventory-card-actionable inventory-card-rarity-${rarity} ${saleToConfirm?.id === entry.id ? 'inventory-card-sale-open' : ''}`}>
-                    <div className={`item-mark rarity-gem rarity-gem-${rarity}`} aria-hidden="true"><ItemIcon item={entry.item} /></div>
-                    <div className="inventory-item-content">
-                      <div className="min-w-0">
-                        <div className="flex min-w-0 items-start gap-2">
-                          <p className="min-w-0 flex-1 truncate text-sm text-stone-200" title={entry.item.name}>{entry.item.name}</p>
-                          <span className="game-number shrink-0 text-xs text-amber-200">×{entry.quantity}</span>
-                        </div>
-                        <p className="mt-1 text-[0.62rem] text-stone-500">{formatItemType(entry.item)}</p>
-                        <p className="mt-2 text-[0.58rem] uppercase tracking-[0.14em] text-amber-500/55">Poziom {entry.item.minLevel}</p>
-                      </div>
-                      <div className="inventory-item-properties">
-                        <GradeBadge grade={entry.item.grade} />
-                        <ItemStats item={entry.item} compact />
-                      </div>
-                    </div>
+        <BackpackToolbar
+          search={search} category={category} grade={grade} sort={sort} iconSize={iconSize}
+          resultCount={filteredItems.length + filteredGems.length}
+          onSearch={setSearch} onCategory={setCategory} onGrade={setGrade} onSort={setSort} onIconSize={setIconSize}
+        />
 
-                    <div className="col-span-2 mt-1 flex flex-wrap items-stretch justify-end gap-2 border-t border-amber-800/20 pt-2">
-                      {compatibleSlots.length && requiresSlotChoice ? (
-                        <label className="min-w-[8rem] flex-1">
-                          <span className="sr-only">Wybierz miejsce dla przedmiotu: {entry.item.name}</span>
-                          <select
-                            className="h-full w-full border border-amber-800/30 bg-slate-950/70 px-2 text-xs text-stone-300 outline-none focus:border-amber-500/60"
-                            value={selectedSlot}
-                            onChange={(event) => setSelectedSlots((current) => ({ ...current, [entry.itemId]: event.target.value as EquipmentSlot }))}
-                          >
-                            {compatibleSlots.map((slot) => <option key={slot} value={slot}>{getEquipmentSlotLabel(slot)}</option>)}
-                          </select>
-                        </label>
-                      ) : null}
-                      {compatibleSlots.length ? (
-                        <Button disabled={equipMutation.isPending || unequipMutation.isPending || sellMutation.isPending || isAlreadyEquippedInSlot} onClick={() => equipMutation.mutate({ itemId: entry.itemId, slot: selectedSlot, itemName: entry.item.name })}>
-                          {isEquipping ? 'Zakładanie…' : isAlreadyEquippedInSlot ? 'Założone' : 'Załóż'}
-                        </Button>
-                      ) : null}
-                      <div className="sale-confirm-anchor">
-                        <Button variant="secondary" disabled={equipMutation.isPending || unequipMutation.isPending || sellMutation.isPending} onClick={() => setSaleToConfirm(entry)} title={`Sprzedaj jedną sztukę za ${Math.max(1, Math.floor(entry.item.price * 0.3))} monet`}>
-                          {isSelling ? 'Sprzedaż…' : <span className="inline-flex items-center gap-2">Sprzedaj <CurrencyAmount value={Math.max(1, Math.floor(entry.item.price * 0.3))} compact /></span>}
-                        </Button>
-                        {saleToConfirm?.id === entry.id ? (
-                          <ConfirmDialog
-                            className="sale-confirm-popover"
-                            title="Sprzedać przedmiot?"
-                            pending={sellMutation.isPending}
-                            onCancel={() => setSaleToConfirm(null)}
-                            onConfirm={() => sellMutation.mutate({ itemId: saleToConfirm.itemId, itemName: saleToConfirm.item.name })}
-                            confirmLabel={sellMutation.isPending ? 'Sprzedawanie…' : <span className="inline-flex items-center gap-2">Sprzedaj za <CurrencyAmount value={Math.max(1, Math.floor(saleToConfirm.item.price * 0.3))} compact /></span>}
-                          >
-                            Czy na pewno chcesz sprzedać jedną sztukę przedmiotu <strong className="text-stone-200">{saleToConfirm.item.name}</strong>? Tej operacji nie można cofnąć.
-                          </ConfirmDialog>
-                        ) : null}
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : <EmptyState title="Pusty plecak">Pierwsze przedmioty możesz kupić na targowisku lub zdobyć podczas wypraw.</EmptyState>}
-        </GamePanel>
+        <div className="backpack-layout">
+          <div className="backpack-inventory-pane">
+            <BackpackGrid items={filteredItems} gems={filteredGems} iconSize={iconSize} selected={selection} onSelect={setSelection} />
+          </div>
 
-        <GamePanel title="Założone przedmioty" eyebrow={`${equipment.length} z 18 miejsc`}>
-          {equipment.length ? (
-            <div className="divide-y divide-amber-800/20 border border-amber-800/20">
-              {equipment.map((entry) => {
-                const isUnequipping = unequipMutation.isPending && unequipMutation.variables?.slot === entry.slot;
-                const rarity = entry.item.rarity.toLowerCase();
-                return (
-                  <div key={entry.slot} className={`equipped-list-row equipped-list-row-${rarity}`}>
-                    <div className="equipped-list-content">
-                      <div className={`equipped-item-mark rarity-gem rarity-gem-${rarity}`} aria-hidden="true"><ItemIcon item={entry.item} /></div>
-                      <div className="equipped-list-main">
-                        <div className="min-w-0">
-                          <p className="truncate text-stone-200" title={entry.item.name}>{entry.item.name}</p>
-                          <p className="mt-1 text-[0.62rem] text-stone-500">{formatItemType(entry.item)} · {getEquipmentSlotLabel(entry.slot)}</p>
-                        </div>
-                        <div className="equipped-list-properties">
-                          <GradeBadge grade={entry.item.grade} />
-                          <ItemStats item={entry.item} compact />
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="secondary" disabled={equipMutation.isPending || unequipMutation.isPending} onClick={() => unequipMutation.mutate({ slot: entry.slot as EquipmentSlot, itemName: entry.item.name })}>
-                      {isUnequipping ? 'Zdejmowanie…' : 'Zdejmij'}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : <EmptyState title="Brak wyposażenia">Bohater nie ma jeszcze założonych przedmiotów.</EmptyState>}
-        </GamePanel>
-      </div>
-
+          <aside className={`backpack-side-pane ${selection ? 'has-selection' : ''}`}>
+            <section className="backpack-equipment">
+              <header><span>18 MIEJSC</span><h3>Wyposażenie</h3></header>
+              <EquipmentGrid equipment={equipment} selected={selection} onSelect={setSelection} />
+            </section>
+            <BackpackDetails
+              selection={selection} equipment={equipment} characterStats={characterStats} selectedSlot={selectedSlot}
+              busy={busy} error={mutationError}
+              onSlot={(slot) => selectedInventory && setSelectedSlots((current) => ({ ...current, [selectedInventory.id]: slot }))}
+              onEquip={() => selectedInventory && selectedSlot && equipMutation.mutate({ entry: selectedInventory, slot: selectedSlot })}
+              onUnequip={() => selection?.kind === 'EQUIPPED' && unequipMutation.mutate(selection.entry)}
+              onSell={() => selectedInventory && setSaleToConfirm(selectedInventory)}
+              onDismissError={() => { equipMutation.reset(); unequipMutation.reset(); sellMutation.reset(); }}
+              onOpenBlacksmith={onOpenBlacksmith}
+              onClose={() => setSelection(null)}
+            />
+            {saleToConfirm ? (
+              <div className="backpack-sale-confirm">
+                <ConfirmDialog
+                  title="Sprzedać przedmiot?" pending={sellMutation.isPending}
+                  onCancel={() => setSaleToConfirm(null)} onConfirm={() => sellMutation.mutate(saleToConfirm)}
+                  confirmLabel={<span className="inline-flex items-center gap-2">Sprzedaj za <CurrencyAmount value={Math.max(1, Math.floor(saleToConfirm.item.price * .3))} compact /></span>}
+                >
+                  Przedmiot <strong>{saleToConfirm.item.name}</strong> zostanie sprzedany bez możliwości cofnięcia operacji.
+                </ConfirmDialog>
+              </div>
+            ) : null}
+          </aside>
+        </div>
+      </section>
     </div>
   );
+}
+
+function itemCategory(entry: InventoryEntry): BackpackCategory {
+  if (entry.item.category === 'WEAPON') return 'WEAPON';
+  if (entry.item.category === 'ARMOR' || entry.item.category === 'SHIELD_SIGIL') return 'ARMOR';
+  if (['NECKLACE', 'EARRING', 'RING', 'BRACELET'].includes(entry.item.slotGroup ?? '')) return 'JEWELRY';
+  return 'SPECIAL';
+}
+
+function itemComparator(sort: BackpackSort) {
+  return (left: InventoryEntry, right: InventoryEntry): number => {
+    switch (sort) {
+      case 'NAME': return left.item.name.localeCompare(right.item.name, 'pl');
+      case 'LEVEL': return right.item.minLevel - left.item.minLevel;
+      case 'RARITY': return RARITY_ORDER[right.item.rarity] - RARITY_ORDER[left.item.rarity];
+      case 'VALUE': return right.item.price - left.item.price;
+      case 'ENHANCEMENT': return right.enhancementLevel - left.enhancementLevel;
+      default: return Date.parse(right.createdAt) - Date.parse(left.createdAt);
+    }
+  };
 }

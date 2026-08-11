@@ -1,16 +1,18 @@
 import { useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createGuild, declareGuildWar, getMyGuild, joinGuild, leaveGuild, listGuilds,
   listMyGuildWars, removeGuildMember, resolveGuildWar, transferGuildLeadership,
 } from '../../api/guilds.api';
-import { ActionNotice } from '../../components/ui/ActionNotice';
+import { ActionToast } from '../../components/ui/ActionToast';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { GamePanel } from '../../components/ui/GamePanel';
 import { SectionTitle } from '../../components/ui/SectionTitle';
+import { RewardCelebration } from '../../components/ui/RewardCelebration';
 import { getApiErrorMessage } from '../../lib/api-errors';
 import type { Character, GuildDetails, GuildMember, GuildSummary, GuildWar } from '../../types/game';
 
@@ -24,6 +26,8 @@ type GuildDecision =
 export function GuildView({ character }: { character: Character }) {
   const queryClient = useQueryClient();
   const [success, setSuccess] = useState<string | null>(null);
+  const [successPlacement, setSuccessPlacement] = useState<'top' | 'bottom'>('top');
+  const [warOutcome, setWarOutcome] = useState<{ won: boolean; summary: string; reward: number | null } | null>(null);
   const [decision, setDecision] = useState<GuildDecision | null>(null);
   const myGuildQuery = useQuery({ queryKey: ['guild', 'mine'], queryFn: getMyGuild, retry: false });
   const guildsQuery = useQuery({ queryKey: ['guilds'], queryFn: listGuilds, retry: false });
@@ -38,22 +42,47 @@ export function GuildView({ character }: { character: Character }) {
     ]);
   }
 
-  const createMutation = useMutation({ mutationFn: createGuild, onSuccess: async (guild) => { setSuccess(`Założono bractwo ${guild.name}.`); await refreshGuilds(); } });
-  const joinMutation = useMutation({ mutationFn: joinGuild, onSuccess: async (guild) => { setSuccess(`Dołączono do bractwa ${guild.name}.`); await refreshGuilds(); } });
-  const leaveMutation = useMutation({ mutationFn: leaveGuild, onSuccess: async () => { setDecision(null); setSuccess('Opuszczono bractwo.'); await refreshGuilds(); } });
-  const kickMutation = useMutation({ mutationFn: removeGuildMember, onSuccess: async () => { setDecision(null); setSuccess('Bohater został usunięty z bractwa.'); await refreshGuilds(); } });
-  const transferMutation = useMutation({ mutationFn: transferGuildLeadership, onSuccess: async (_, characterId) => { setDecision(null); setSuccess(`Przekazano przywództwo bohaterowi ${myGuildQuery.data?.members.find((member) => member.characterId === characterId)?.characterName ?? ''}.`); await refreshGuilds(); } });
-  const declareMutation = useMutation({ mutationFn: declareGuildWar, onSuccess: async (war) => { setDecision(null); setSuccess(`Rozpoczęła się wojna z bractwem ${war.defenderGuildName}.`); await refreshGuilds(); } });
-  const resolveMutation = useMutation({ mutationFn: resolveGuildWar, onSuccess: async (war) => { setDecision(null); setSuccess(war.summary ?? 'Wojna została rozstrzygnięta.'); await refreshGuilds(); } });
+  function showSuccess(message: string, placement: 'top' | 'bottom' = 'top') {
+    setSuccessPlacement(placement);
+    setSuccess(message);
+  }
+
+  const createMutation = useMutation({ mutationFn: createGuild, onSuccess: async (guild) => { showSuccess(`Założono bractwo ${guild.name}.`); await refreshGuilds(); } });
+  const joinMutation = useMutation({ mutationFn: joinGuild, onSuccess: async (guild) => { showSuccess(`Dołączono do bractwa ${guild.name}.`); await refreshGuilds(); } });
+  const leaveMutation = useMutation({ mutationFn: leaveGuild, onSuccess: async () => { setDecision(null); showSuccess('Opuszczono bractwo.'); await refreshGuilds(); } });
+  const kickMutation = useMutation({ mutationFn: removeGuildMember, onSuccess: async () => { setDecision(null); showSuccess('Bohater został usunięty z bractwa.'); await refreshGuilds(); } });
+  const transferMutation = useMutation({ mutationFn: transferGuildLeadership, onSuccess: async (_, characterId) => { setDecision(null); showSuccess(`Przekazano przywództwo bohaterowi ${myGuildQuery.data?.members.find((member) => member.characterId === characterId)?.characterName ?? ''}.`); await refreshGuilds(); } });
+  const declareMutation = useMutation({ mutationFn: declareGuildWar, onSuccess: async (war) => { setDecision(null); showSuccess(`Rozpoczęła się wojna z bractwem ${war.defenderGuildName}.`, 'bottom'); await refreshGuilds(); } });
+  const resolveMutation = useMutation({ mutationFn: resolveGuildWar, onSuccess: async (war) => {
+    setDecision(null);
+    showSuccess('Wynik wojny zapisano w kronice.', 'bottom');
+    const won = war.winnerGuildId === myGuildQuery.data?.id;
+    setWarOutcome({
+      won,
+      summary: war.summary ?? (won
+        ? 'Chorągiew przeciwnika ustąpiła przed siłą Twojego bractwa.'
+        : 'Chorągiew Twojego bractwa upadła, lecz wojna została zapisana w kronikach.'),
+      reward: won && war.rewardPerMember ? Number(war.rewardPerMember) : null,
+    });
+    await refreshGuilds();
+  } });
   const mutations = [createMutation, joinMutation, leaveMutation, kickMutation, transferMutation, declareMutation, resolveMutation];
   const error = mutations.find((mutation) => mutation.isError)?.error;
   const pending = mutations.some((mutation) => mutation.isPending);
   const guild = myGuildQuery.data;
 
   return <div className="view-enter">
+    {warOutcome ? <RewardCelebration
+      tone={warOutcome.won ? 'reward' : 'defeat'}
+      eyebrow={warOutcome.won ? 'Zwycięstwo bractwa' : 'Wojna rozstrzygnięta'}
+      title={warOutcome.won ? 'Łupy wojenne zostały rozdzielone' : 'Porażka bractwa'}
+      description={warOutcome.summary}
+      entries={warOutcome.reward !== null ? [{ kind: 'gold', label: 'Złoto', value: warOutcome.reward }] : []}
+      onClose={() => setWarOutcome(null)}
+    /> : null}
     <SectionTitle eyebrow="Bractwo" title={guild ? guild.name : 'Gildie Etherii'} description={guild ? 'Wspólnota bohaterów, kronika członków i wojny o znaczenie w Etherii.' : 'Załóż własne bractwo albo dołącz do istniejącej wspólnoty bohaterów.'} />
-    {success ? <ActionNotice tone="success" onDismiss={() => setSuccess(null)}>{success}</ActionNotice> : null}
-    {error ? <ActionNotice tone="error" onDismiss={() => mutations.forEach((mutation) => mutation.reset())}>{getApiErrorMessage(error)}</ActionNotice> : null}
+    {success ? <ActionToast placement={successPlacement} onDismiss={() => setSuccess(null)}>{success}</ActionToast> : null}
+    {error ? <ActionToast placement="top" tone="error" onDismiss={() => mutations.forEach((mutation) => mutation.reset())}>{getApiErrorMessage(error)}</ActionToast> : null}
 
     {myGuildQuery.isLoading ? <GamePanel><EmptyState title="Posłańcy sprawdzają księgi">Trwa odczytywanie rejestru bractw.</EmptyState></GamePanel> : guild ? <GuildHall
       character={character}
@@ -105,9 +134,16 @@ function GuildRegistry({ guilds, pending, onCreate, onJoin }: { guilds: GuildSum
 }
 
 function GuildHall({ character, guild, guilds, wars, pending, decision, onDecision, onConfirm }: { character: Character; guild: GuildDetails; guilds: GuildSummary[]; wars: GuildWar[]; pending: boolean; decision: GuildDecision | null; onDecision: (decision: GuildDecision | null) => void; onConfirm: () => void }) {
+  const [warPage, setWarPage] = useState(1);
   const isLeader = guild.leaderCharacterId === character.id;
   const activeWars = wars.filter((war) => war.status === 'ACTIVE');
   const opponents = guilds.filter((entry) => entry.id !== guild.id && !activeWars.some((war) => war.attackerGuildId === entry.id || war.defenderGuildId === entry.id));
+  const warsPerPage = 5;
+  const warPages = Math.max(1, Math.ceil(wars.length / warsPerPage));
+  const currentWarPage = Math.min(warPage, warPages);
+  const visibleWars = wars.slice((currentWarPage - 1) * warsPerPage, currentWarPage * warsPerPage);
+  const firstVisibleWarPage = Math.max(1, Math.min(currentWarPage - 2, warPages - 4));
+  const visibleWarPages = Array.from({ length: Math.min(5, warPages) }, (_, index) => firstVisibleWarPage + index);
   return <>
     <section className="guild-hall-banner">
       <img src="/assets/auth-city-etheria.png" alt="Siedziba bractwa" /><div className="guild-hall-shade" />
@@ -135,9 +171,16 @@ function GuildHall({ character, guild, guilds, wars, pending, decision, onDecisi
       </div>
     </div>
     <GamePanel className="mt-4" title="Wojny bractwa" eyebrow="Kronika konfliktów">
-      {wars.length ? <div className="guild-war-list">{wars.map((war) => <WarCard key={war.id} war={war} guildId={guild.id} canResolve={isLeader} pending={pending} onResolve={() => onDecision({ type: 'resolve', war })} />)}</div> : <EmptyState title="Chorągiew nie poznała jeszcze wojny">Pierwszy konflikt zostanie zapisany w tej kronice.</EmptyState>}
+      {wars.length ? <>
+        <div className="guild-war-list">{visibleWars.map((war) => <WarCard key={war.id} war={war} guildId={guild.id} canResolve={isLeader} pending={pending} onResolve={() => onDecision({ type: 'resolve', war })} />)}</div>
+        {warPages > 1 ? <nav className="guild-war-pagination" aria-label="Strony kroniki wojen">
+          <button type="button" disabled={currentWarPage === 1} onClick={() => setWarPage((page) => Math.max(1, page - 1))}>Poprzednia</button>
+          <div>{visibleWarPages.map((page) => <button type="button" key={page} className={page === currentWarPage ? 'active' : ''} aria-current={page === currentWarPage ? 'page' : undefined} onClick={() => setWarPage(page)}>{page}</button>)}</div>
+          <button type="button" disabled={currentWarPage === warPages} onClick={() => setWarPage((page) => Math.min(warPages, page + 1))}>Następna</button>
+        </nav> : null}
+      </> : <EmptyState title="Chorągiew nie poznała jeszcze wojny">Pierwszy konflikt zostanie zapisany w tej kronice.</EmptyState>}
     </GamePanel>
-    {decision ? <div className="guild-decision"><ConfirmDialog title={decisionTitle(decision)} pending={pending} onCancel={() => onDecision(null)} onConfirm={onConfirm} confirmLabel={pending ? 'Zapisywanie decyzji…' : decisionConfirmLabel(decision)}>{decisionDescription(decision)}</ConfirmDialog></div> : null}
+    {decision ? createPortal(<div className="guild-decision"><ConfirmDialog title={decisionTitle(decision)} pending={pending} onCancel={() => onDecision(null)} onConfirm={onConfirm} confirmLabel={pending ? 'Zapisywanie decyzji…' : decisionConfirmLabel(decision)}>{decisionDescription(decision)}</ConfirmDialog></div>, document.body) : null}
   </>;
 }
 

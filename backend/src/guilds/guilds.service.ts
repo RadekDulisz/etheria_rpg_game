@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { CharactersService } from '../characters/characters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGuildDto } from './dto/create-guild.dto';
+import { resolveOwnedItemStats } from '../blacksmith/blacksmith.balance';
 
 const MAX_GUILD_MEMBERS = 20;
 
@@ -501,7 +502,19 @@ export class GuildsService {
             character: {
               include: {
                 combatant: {
-                  include: { stats: true, equippedItems: { include: { item: true } } },
+                  include: {
+                    stats: true,
+                    equippedItems: {
+                      include: {
+                        ownedItem: {
+                          include: {
+                            item: true,
+                            sockets: { include: { gemDefinition: true } },
+                          },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -517,7 +530,7 @@ export class GuildsService {
         ? stats.strength + stats.agility + stats.endurance + stats.intelligence + stats.parryRating
         : 0;
       const equipmentPower = member.character.combatant.equippedItems.reduce((sum, entry) => {
-        const item = entry.item;
+        const item = resolveOwnedItemStats(entry.ownedItem);
         return sum + item.attackPower * 2 + item.defensePower * 2 + item.maxHpBonus / 5
           + item.strengthBonus + item.agilityBonus + item.enduranceBonus + item.intelligenceBonus;
       }, 0);

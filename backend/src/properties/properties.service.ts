@@ -10,22 +10,24 @@ import { BuyPropertyDto } from './dto/buy-property.dto';
 import { toCharacterResponse, CharacterWithStats } from '../characters/characters.mapper';
 import { calculatePropertyBonuses, calculateRestorationGoldCost } from './property-bonuses';
 
-const PROPERTY_PURCHASE_COST = 150n;
+const PROPERTY_PURCHASE_COST = 1000n;
 const PROPERTY_BASE_INCOME = 100;
 const PROPERTY_INCOME_PER_LEVEL = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const RESTORATION_COOLDOWN_MS = 30 * 60 * 1000;
+const RESTORATION_BASE_COOLDOWN_MINUTES = 30;
+const RESTORATION_COOLDOWN_REDUCTION_PER_LEVEL = 2;
+const RESTORATION_MIN_COOLDOWN_MINUTES = 12;
 const PROPERTY_LEVELS = [
   { level: 1, requiredLevel: 1, upgradeCost: 0, element: 'Opuszczone domostwo i palenisko' },
-  { level: 2, requiredLevel: 5, upgradeCost: 300, element: 'Odbudowany dach' },
-  { level: 3, requiredLevel: 10, upgradeCost: 525, element: 'Studnia i ogród zielarski' },
-  { level: 4, requiredLevel: 15, upgradeCost: 919, element: 'Kapliczka lub miejsce rytuału' },
-  { level: 5, requiredLevel: 20, upgradeCost: 1608, element: 'Palisada i brama' },
-  { level: 6, requiredLevel: 30, upgradeCost: 2814, element: 'Warsztat i stajnia' },
-  { level: 7, requiredLevel: 40, upgradeCost: 4925, element: 'Wieża strażnicza' },
-  { level: 8, requiredLevel: 52, upgradeCost: 8619, element: 'Kamienny dwór' },
-  { level: 9, requiredLevel: 61, upgradeCost: 15083, element: 'Wielka kaplica i biblioteka' },
-  { level: 10, requiredLevel: 76, upgradeCost: 26395, element: 'Ufortyfikowana rezydencja' },
+  { level: 2, requiredLevel: 5, upgradeCost: 1500, element: 'Odbudowany dach' },
+  { level: 3, requiredLevel: 10, upgradeCost: 2750, element: 'Studnia i ogród zielarski' },
+  { level: 4, requiredLevel: 15, upgradeCost: 5000, element: 'Kapliczka lub miejsce rytuału' },
+  { level: 5, requiredLevel: 20, upgradeCost: 9000, element: 'Palisada i brama' },
+  { level: 6, requiredLevel: 30, upgradeCost: 16000, element: 'Warsztat i stajnia' },
+  { level: 7, requiredLevel: 40, upgradeCost: 28000, element: 'Wieża strażnicza' },
+  { level: 8, requiredLevel: 52, upgradeCost: 48000, element: 'Kamienny dwór' },
+  { level: 9, requiredLevel: 61, upgradeCost: 80000, element: 'Wielka kaplica i biblioteka' },
+  { level: 10, requiredLevel: 76, upgradeCost: 135000, element: 'Ufortyfikowana rezydencja' },
 ] as const;
 
 export interface PropertyUpgradeResponse {
@@ -52,12 +54,21 @@ export interface PropertyResponse {
   nextLevelRequiredCharacterLevel: number | null;
   currentElement: string;
   nextElement: string | null;
+  nextLevelBenefits: {
+    dailyIncome: number;
+    regenerationPercentPerFiveMinutes: number;
+    missionSuccessPercent: number;
+    missionGoldPercent: number;
+    itemChancePercent: number;
+    restorationCooldownMinutes: number;
+  } | null;
   health: { current: number; max: number };
   regeneration: { multiplier: number; percentPerFiveMinutes: number };
   restoration: {
     actionName: string;
     goldCost: string;
     healPercent: number;
+    cooldownMinutes: number;
     readyAt: string | null;
     secondsRemaining: number;
     available: boolean;
@@ -268,6 +279,16 @@ export class PropertiesService {
 
   async restoreHealth(userId: string): Promise<PropertyResponse> {
     const character = await this.charactersService.getByUserId(userId);
+    const tavernQuest = await this.prisma.tavernQuestRun.findFirst({
+      where: {
+        characterId: character.id,
+        status: { in: ['ACTIVE', 'RESOLVED'] },
+      },
+      select: { id: true },
+    });
+    if (tavernQuest) {
+      throw new ConflictException('Nie możesz skorzystać z odnowy, dopóki bohater przebywa na zleceniu z Karczmy');
+    }
     const property = await this.prisma.property.findUnique({
       where: { characterId: character.id },
       include: { upgrades: { orderBy: { upgradedAt: 'asc' } } },
@@ -277,8 +298,9 @@ export class PropertiesService {
     }
 
     const now = new Date();
+    const restorationCooldownMs = this.calculateRestorationCooldownMs(property.level);
     const readyAt = property.lastRestoredAt
-      ? new Date(property.lastRestoredAt.getTime() + RESTORATION_COOLDOWN_MS)
+      ? new Date(property.lastRestoredAt.getTime() + restorationCooldownMs)
       : null;
     if (readyAt && readyAt > now) {
       const minutes = Math.ceil((readyAt.getTime() - now.getTime()) / 60_000);
@@ -289,10 +311,7 @@ export class PropertiesService {
     if (characterResponse.currentHp >= characterResponse.maxHp) {
       throw new BadRequestException('Bohater ma już pełne zdrowie');
     }
-    const bonuses = calculatePropertyBonuses(property.level, character.reputation);
-    const healPercent = Math.min(40, 10 + property.level * 2 + bonuses.restorationPercentBonus);
-    const restoredHp = Math.max(1, Math.ceil(characterResponse.maxHp * healPercent / 100));
-    const currentHp = Math.min(characterResponse.maxHp, characterResponse.currentHp + restoredHp);
+    const currentHp = characterResponse.maxHp;
     const goldCost = BigInt(calculateRestorationGoldCost(character.level, property.level));
     if (character.gold < goldCost) {
       throw new ConflictException('Masz za mało złota na odnowienie zdrowia');
@@ -401,17 +420,21 @@ export class PropertiesService {
     const levelConfig = PROPERTY_LEVELS[Math.min(property.level, PROPERTY_LEVELS.length) - 1];
     const nextLevelConfig = PROPERTY_LEVELS[property.level] ?? null;
     const bonuses = calculatePropertyBonuses(property.level, character.reputation);
+    const nextBonuses = nextLevelConfig
+      ? calculatePropertyBonuses(property.level + 1, character.reputation)
+      : null;
     const characterResponse = toCharacterResponse(character);
     const now = new Date();
+    const restorationCooldownMinutes =
+      this.calculateRestorationCooldownMinutes(property.level);
     const readyAt = property.lastRestoredAt
-      ? new Date(property.lastRestoredAt.getTime() + RESTORATION_COOLDOWN_MS)
+      ? new Date(
+          property.lastRestoredAt.getTime() + restorationCooldownMinutes * 60 * 1000,
+        )
       : null;
     const secondsRemaining = readyAt
       ? Math.max(0, Math.ceil((readyAt.getTime() - now.getTime()) / 1000))
       : 0;
-    const restorationPercent = Math.round(
-      Math.min(40, 10 + property.level * 2 + bonuses.restorationPercentBonus) * 10,
-    ) / 10;
     const restorationCost = calculateRestorationGoldCost(character.level, property.level);
     const reputationTitle = bonuses.alignment === 'GOOD'
       ? 'Łaska domostwa'
@@ -433,6 +456,24 @@ export class PropertiesService {
       nextLevelRequiredCharacterLevel: nextLevelConfig?.requiredLevel ?? null,
       currentElement: levelConfig.element,
       nextElement: nextLevelConfig?.element ?? null,
+      nextLevelBenefits: nextBonuses
+        ? {
+            dailyIncome: this.calculateDailyIncome({
+              baseIncome: property.baseIncome,
+              level: property.level + 1,
+            }),
+            regenerationPercentPerFiveMinutes:
+              Math.round(5 * nextBonuses.regenMultiplier * 10) / 10,
+            missionSuccessPercent:
+              Math.round(nextBonuses.missionSuccessBonus * 1000) / 10,
+            missionGoldPercent:
+              Math.round((nextBonuses.missionGoldMultiplier - 1) * 1000) / 10,
+            itemChancePercent:
+              Math.round(nextBonuses.itemRewardChanceBonus * 1000) / 10,
+            restorationCooldownMinutes:
+              this.calculateRestorationCooldownMinutes(property.level + 1),
+          }
+        : null,
       health: { current: characterResponse.currentHp, max: characterResponse.maxHp },
       regeneration: {
         multiplier: Math.round(bonuses.regenMultiplier * 100) / 100,
@@ -445,7 +486,8 @@ export class PropertiesService {
             ? 'Dopełnij mrocznego rytuału'
             : 'Odpocznij przy palenisku',
         goldCost: restorationCost.toString(),
-        healPercent: restorationPercent,
+        healPercent: 100,
+        cooldownMinutes: restorationCooldownMinutes,
         readyAt: readyAt?.toISOString() ?? null,
         secondsRemaining,
         available: secondsRemaining === 0 && characterResponse.currentHp < characterResponse.maxHp,
@@ -469,5 +511,17 @@ export class PropertiesService {
         upgradedAt: upgrade.upgradedAt.toISOString(),
       })),
     };
+  }
+
+  private calculateRestorationCooldownMinutes(level: number): number {
+    return Math.max(
+      RESTORATION_MIN_COOLDOWN_MINUTES,
+      RESTORATION_BASE_COOLDOWN_MINUTES
+        - (Math.max(1, level) - 1) * RESTORATION_COOLDOWN_REDUCTION_PER_LEVEL,
+    );
+  }
+
+  private calculateRestorationCooldownMs(level: number): number {
+    return this.calculateRestorationCooldownMinutes(level) * 60 * 1000;
   }
 }

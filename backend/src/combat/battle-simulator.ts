@@ -20,6 +20,11 @@ export interface BattleSimulationResult {
   defenderHitsLanded: number;
 }
 
+export interface BattleInitialHealth {
+  attacker?: number;
+  defender?: number;
+}
+
 /**
  * Rozgrywa cala walke runda po rundzie (naprzemiennie: atakujacy,
  * broniacy sie) az do polozenia jednej ze stron albo do MAX_BATTLE_ROUNDS
@@ -32,11 +37,12 @@ export function simulateBattle(
   defender: CombatSnapshot,
   defenderLevel: number,
   rng: () => number = Math.random,
+  initialHealth: BattleInitialHealth = {},
 ): BattleSimulationResult {
   const attackerMaxHp = calculateMaxHp(attacker.endurance, attackerLevel, attacker.maxHpBonus ?? 0);
   const defenderMaxHp = calculateMaxHp(defender.endurance, defenderLevel, defender.maxHpBonus ?? 0);
-  let attackerHp = attackerMaxHp;
-  let defenderHp = defenderMaxHp;
+  let attackerHp = clampInitialHealth(initialHealth.attacker, attackerMaxHp);
+  let defenderHp = clampInitialHealth(initialHealth.defender, defenderMaxHp);
 
   const rounds: SimulatedRound[] = [];
   let attackerHitsLanded = 0;
@@ -81,6 +87,11 @@ export function simulateBattle(
   }
 
   return { result, rounds, attackerHitsLanded, defenderHitsLanded };
+}
+
+function clampInitialHealth(value: number | undefined, maximum: number): number {
+  if (value === undefined) return maximum;
+  return Math.max(1, Math.min(maximum, Math.floor(value)));
 }
 
 function toRound(

@@ -1,5 +1,5 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import { MissionMorality } from '@prisma/client';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { GemTier, MissionMorality } from '@prisma/client';
 import { CharactersService } from '../characters/characters.service';
 import { toCharacterResponse } from '../characters/characters.mapper';
 import { applyExperienceGain } from '../characters/leveling';
@@ -9,10 +9,19 @@ import { MISSION_TIERS, missionRanges, randomInteger, rollMissionTier, rollReput
 import { MISSION_TEMPLATES } from './mission-templates';
 import { MISSION_MORAL_ROUTES } from './mission-morality';
 import { calculatePropertyBonuses } from '../properties/property-bonuses';
+import { calculateMaxHp } from '../combat/combat-formulas';
+import { initialSocketState, resolveOwnedItemStats } from '../blacksmith/blacksmith.balance';
 
 const SUCCESS_CHANCE = 0.7;
-const ITEM_REWARD_CHANCE = 0.05;
 const HISTORY_LIMIT = 6;
+const GEM_DROP_CHANCE_BY_TIER = [0.08, 0.12, 0.16, 0.21, 0.28] as const;
+const GEM_TIERS_BY_MISSION: GemTier[][] = [
+  [GemTier.SHARD],
+  [GemTier.SHARD, GemTier.CUT],
+  [GemTier.SHARD, GemTier.CUT, GemTier.FLAWLESS],
+  [GemTier.CUT, GemTier.FLAWLESS, GemTier.ROYAL],
+  [GemTier.FLAWLESS, GemTier.ROYAL, GemTier.ANCIENT],
+];
 
 @Injectable()
 export class MissionsService {
@@ -27,21 +36,41 @@ export class MissionsService {
       this.prisma.missionProgress.findUnique({ where: { characterId: character.id } }),
       this.prisma.missionAttempt.findMany({
         where: { characterId: character.id },
-        include: { rewardItem: true },
+        include: { rewardItem: true, rewardGemDefinition: true },
         orderBy: { createdAt: 'desc' },
         take: HISTORY_LIMIT,
       }),
     ]);
     const response = toCharacterResponse(character);
     const propertyBonuses = calculatePropertyBonuses(character.property?.level, character.reputation);
+    const propertyBonusSummary = {
+      level: character.property?.level ?? 0,
+      successPercent: Math.round(propertyBonuses.missionSuccessBonus * 1000) / 10,
+      goldPercent: Math.round((propertyBonuses.missionGoldMultiplier - 1) * 1000) / 10,
+      itemChancePercent: Math.round(propertyBonuses.itemRewardChanceBonus * 1000) / 10,
+    };
 
     return {
       successChance: Math.round((SUCCESS_CHANCE + propertyBonuses.missionSuccessBonus) * 1000) / 10,
-      itemRewardChance: Math.round((ITEM_REWARD_CHANCE + propertyBonuses.itemRewardChanceBonus) * 1000) / 10,
+      itemRewardChance: Math.round(
+        (MISSION_TIERS[0].itemChance / 100 + propertyBonuses.itemRewardChanceBonus) * 1000,
+      ) / 10,
       totalMissions: progress?.totalMissions ?? 0,
       missionsUntilGuaranteedTierFive: Math.max(1, 10 - (progress?.missionsSinceTierFive ?? 0)),
       health: { current: response.currentHp, max: response.maxHp },
-      tiers: MISSION_TIERS.map((tier) => ({ ...tier, ...missionRanges(tier, character.level) })),
+      propertyBonus: propertyBonusSummary,
+      tiers: MISSION_TIERS.map((tier) => {
+        const ranges = missionRanges(tier, character.level);
+        return {
+          ...tier,
+          ...ranges,
+          goldMin: Math.round(ranges.goldMin * propertyBonuses.missionGoldMultiplier),
+          goldMax: Math.round(ranges.goldMax * propertyBonuses.missionGoldMultiplier),
+          itemRewardChance: Math.round(
+            (tier.itemChance / 100 + propertyBonuses.itemRewardChanceBonus) * 1000,
+          ) / 10,
+        };
+      }),
       history: history.map(serializeAttempt),
     };
   }
@@ -77,7 +106,11 @@ export class MissionsService {
     const reputationAfter = character.reputation + reputationChange;
 
     let rewardItem = null;
-    if (success && Math.random() < ITEM_REWARD_CHANCE + propertyBonuses.itemRewardChanceBonus) {
+    let rewardGemDefinition = null;
+    if (
+      success
+      && Math.random() < tier.itemChance / 100 + propertyBonuses.itemRewardChanceBonus
+    ) {
       const where = { minLevel: { lte: character.level }, category: { not: 'CONSUMABLE' as const } };
       const count = await this.prisma.item.count({ where });
       if (count > 0) {
@@ -89,11 +122,41 @@ export class MissionsService {
       }
     }
 
+    if (success && Math.random() < GEM_DROP_CHANCE_BY_TIER[tier.tier - 1]) {
+      const eligibleGemTiers = GEM_TIERS_BY_MISSION[tier.tier - 1];
+      const gems = await this.prisma.gemDefinition.findMany({
+        where: { tier: { in: eligibleGemTiers }, minLevel: { lte: character.level } },
+        orderBy: [{ minLevel: 'asc' }, { family: 'asc' }],
+      });
+      if (gems.length) {
+        // Kwadrat losowania premiuje niższe jakości, nie odbierając szansy na rzadki kamień.
+        const index = Math.floor(Math.pow(Math.random(), 2) * gems.length);
+        rewardGemDefinition = gems[Math.min(index, gems.length - 1)];
+      }
+    }
+
     const levelProgress = applyExperienceGain(
       character.level,
       character.experience,
       BigInt(experienceReward),
     );
+    const leveledUp = levelProgress.level > character.level;
+    if (!character.combatant.stats) {
+      throw new NotFoundException('Brak statystyk dla tej postaci');
+    }
+    const equippedItems = character.combatant.equippedItems ?? [];
+    const enduranceAfterEquipment = character.combatant.stats.endurance
+      + equippedItems.reduce(
+        (total, equipped) => total + resolveOwnedItemStats(equipped.ownedItem).enduranceBonus,
+        0,
+      );
+    const maxHpBonus = equippedItems.reduce(
+      (total, equipped) => total + resolveOwnedItemStats(equipped.ownedItem).maxHpBonus,
+      0,
+    );
+    const hpAfterMission = leveledUp
+      ? calculateMaxHp(enduranceAfterEquipment, levelProgress.level, maxHpBonus)
+      : currentHp;
     const balanceAfter = character.gold + BigInt(goldReward);
     const now = new Date();
 
@@ -104,7 +167,7 @@ export class MissionsService {
           gold: { increment: BigInt(goldReward) },
           level: levelProgress.level,
           experience: levelProgress.experience,
-          currentHp,
+          currentHp: hpAfterMission,
           healthUpdatedAt: now,
           reputation: { increment: reputationChange },
         },
@@ -116,9 +179,27 @@ export class MissionsService {
         });
       }
       if (rewardItem) {
-        await tx.inventoryItem.upsert({
-          where: { combatantId_itemId: { combatantId: character.combatantId, itemId: rewardItem.id } },
-          create: { combatantId: character.combatantId, itemId: rewardItem.id, quantity: 1 },
+        await tx.ownedItem.create({
+          data: {
+            combatantId: character.combatantId,
+            itemId: rewardItem.id,
+            ...initialSocketState(rewardItem),
+          },
+        });
+      }
+      if (rewardGemDefinition) {
+        await tx.gemStack.upsert({
+          where: {
+            combatantId_gemDefinitionId: {
+              combatantId: character.combatantId,
+              gemDefinitionId: rewardGemDefinition.id,
+            },
+          },
+          create: {
+            combatantId: character.combatantId,
+            gemDefinitionId: rewardGemDefinition.id,
+            quantity: 1,
+          },
           update: { quantity: { increment: 1 } },
         });
       }
@@ -139,8 +220,9 @@ export class MissionsService {
           experienceReward: BigInt(experienceReward),
           hpLost,
           rewardItemId: rewardItem?.id,
+          rewardGemDefinitionId: rewardGemDefinition?.id,
         },
-        include: { rewardItem: true },
+        include: { rewardItem: true, rewardGemDefinition: true },
       });
       await tx.missionProgress.upsert({
         where: { characterId: character.id },
@@ -195,6 +277,7 @@ function serializeAttempt(attempt: {
   choiceDescription: string | null;
   reputationChange: number;
   rewardItem: unknown;
+  rewardGemDefinition: unknown;
   createdAt: Date;
 }) {
   return {

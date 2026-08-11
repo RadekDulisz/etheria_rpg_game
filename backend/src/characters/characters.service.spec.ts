@@ -182,11 +182,29 @@ describe('CharactersService', () => {
 
       expect(prisma.character.update).toHaveBeenCalledWith({
         where: { id: 'char-1' },
-        data: { level: 2, experience: 0n },
+        data: {
+          level: 2,
+          experience: 0n,
+          currentHp: 84,
+          healthUpdatedAt: expect.any(Date),
+        },
       });
       expect(prisma.combatantStats.update).toHaveBeenCalledWith({
         where: { combatantId: 'combatant-1' },
         data: { unspentPoints: { increment: 3 } },
+      });
+    });
+
+    it('nie leczy postaci, jeżeli zdobyte EXP nie daje awansu', async () => {
+      prisma.character.findUnique
+        .mockResolvedValueOnce({ ...fullCharacter, currentHp: 23 })
+        .mockResolvedValueOnce({ ...fullCharacter, experience: 40n, currentHp: 23 });
+
+      await service.addExperience('char-1', 40);
+
+      expect(prisma.character.update).toHaveBeenCalledWith({
+        where: { id: 'char-1' },
+        data: { level: 1, experience: 40n },
       });
     });
   });

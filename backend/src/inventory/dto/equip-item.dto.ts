@@ -3,7 +3,7 @@ import { IsEnum, IsUUID } from 'class-validator';
 
 export class EquipItemDto {
   @IsUUID()
-  itemId: string;
+  ownedItemId: string;
 
   @IsEnum(EquipmentSlot, { message: 'Wybrano nieprawidłowe miejsce wyposażenia' })
   slot: EquipmentSlot;

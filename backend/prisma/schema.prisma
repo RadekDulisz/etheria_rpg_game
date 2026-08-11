@@ -62,6 +62,8 @@ model Combatant {
 
   stats           CombatantStats?
   inventoryItems  InventoryItem[]
+  ownedItems      OwnedItem[]
+  gemStacks       GemStack[]
   equippedItems   EquippedItem[]
   weaponExpertise CombatantWeaponExpertise[]
 
@@ -83,6 +85,10 @@ model Character {
   experience      BigInt    @default(0)
   gold            BigInt    @default(0)
   reputation      Int       @default(0)
+  arenaRating     Int       @default(1000)
+  arenaWins       Int       @default(0)
+  arenaLosses     Int       @default(0)
+  arenaDraws      Int       @default(0)
   currentHp       Int?
   healthUpdatedAt DateTime  @default(now())
   avatarUrl       String?
@@ -92,11 +98,18 @@ model Character {
   transactions     Transaction[]
   missionProgress  MissionProgress?
   missionAttempts  MissionAttempt[]
-  ledGuild         Guild?           @relation("GuildLeader")
+  ledGuild         Guild?                 @relation("GuildLeader")
   guildMembership  GuildMember?
-  startedGuildWars GuildWar[]       @relation("GuildWarStarter")
+  startedGuildWars GuildWar[]             @relation("GuildWarStarter")
   property         Property?
+  forgeOperations  ForgeOperation[]
+  marketRefreshes  MarketRefresh[]
+  tavernBoard      TavernBoard?
+  tavernQuestRuns  TavernQuestRun[]
+  tavernChronicle  TavernChronicleEntry[]
+  tavernProvisions TavernProvisionStack[]
 
+  @@index([arenaRating(sort: Desc)])
   @@map("characters")
 }
 
@@ -111,6 +124,7 @@ model Bot {
   level       Int       @default(1)
   expReward   Int       @default(0)
   goldReward  Int       @default(0)
+  reputation  Int       @default(0)
   // Pozwala administracji wylaczyc bota z puli przeciwnikow bez
   // usuwania go (i bez utraty historii walk, ktore sie do niego odwoluja).
   isActive    Boolean   @default(true)
@@ -262,16 +276,20 @@ model Item {
   // Bonus do CombatantStats.parryRating - typowo > 0 dla tarcz/sigili.
   parryBonus          Int @default(0)
   maxHpBonus          Int @default(0)
-  // Stale punkty procentowe szansy na trafienie krytyczne.
+  // Ocena trafienia krytycznego. Silnik walki przelicza ją na procent
+  // z malejącą wagą, razem z DEX oraz biegłością w używanej broni.
   criticalChanceBonus Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  inventoryEntries InventoryItem[]
-  equippedEntries  EquippedItem[]
-  shopEntries      ShopEntry[]
-  missionRewards   MissionAttempt[]
+  inventoryEntries  InventoryItem[]
+  ownedEntries      OwnedItem[]
+  shopEntries       ShopEntry[]
+  missionRewards    MissionAttempt[]
+  tavernRewards     TavernQuestRun[]       @relation("TavernRandomReward")
+  tavernStoryRelics TavernQuestRun[]       @relation("TavernStoryRelic")
+  tavernChronicles  TavernChronicleEntry[]
 
   @@map("items")
 }
@@ -292,18 +310,132 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
+// Konkretny egzemplarz wyposazenia. W przeciwienstwie do katalogowego Item
+// przechowuje stan zmienny: poziom ulepszenia oraz gniazda. Dwie sztuki tego
+// samego Item pozostaja dzieki temu niezalezne.
+model OwnedItem {
+  id               String    @id @default(uuid())
+  combatantId      String
+  combatant        Combatant @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  itemId           String
+  item             Item      @relation(fields: [itemId], references: [id])
+  enhancementLevel Int       @default(0)
+  socketCapacity   Int       @default(0)
+  unlockedSockets  Int       @default(0)
+  forgeFailStack   Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  equippedEntry   EquippedItem?
+  sockets         ItemSocket[]
+  forgeOperations ForgeOperation[]
+
+  @@index([combatantId, createdAt])
+  @@index([itemId])
+  @@map("owned_items")
+}
+
 // Zalozony przedmiot w konkretnym, fizycznym slocie. PK zlozony
 // (combatantId, slot) gwarantuje jeden przedmiot na slot naraz.
 model EquippedItem {
   combatantId String
   combatant   Combatant     @relation(fields: [combatantId], references: [id], onDelete: Cascade)
   slot        EquipmentSlot
-  itemId      String
-  item        Item          @relation(fields: [itemId], references: [id])
+  ownedItemId String        @unique
+  ownedItem   OwnedItem     @relation(fields: [ownedItemId], references: [id], onDelete: Cascade)
   equippedAt  DateTime      @default(now())
 
   @@id([combatantId, slot])
   @@map("equipped_items")
+}
+
+enum GemFamily {
+  RUBY
+  AMETHYST
+  EMERALD
+  SAPPHIRE
+}
+
+enum GemTier {
+  SHARD
+  CUT
+  FLAWLESS
+  ROYAL
+  ANCIENT
+}
+
+model GemDefinition {
+  id        String    @id @default(uuid())
+  family    GemFamily
+  tier      GemTier
+  name      String    @unique
+  minLevel  Int
+  iconUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  stacks         GemStack[]
+  sockets        ItemSocket[]
+  missionRewards MissionAttempt[]
+  tavernRewards  TavernQuestRun[]
+
+  @@unique([family, tier])
+  @@map("gem_definitions")
+}
+
+model GemStack {
+  combatantId     String
+  combatant       Combatant     @relation(fields: [combatantId], references: [id], onDelete: Cascade)
+  gemDefinitionId String
+  gemDefinition   GemDefinition @relation(fields: [gemDefinitionId], references: [id], onDelete: Cascade)
+  quantity        Int           @default(0)
+  updatedAt       DateTime      @updatedAt
+
+  @@id([combatantId, gemDefinitionId])
+  @@map("gem_stacks")
+}
+
+model ItemSocket {
+  ownedItemId     String
+  ownedItem       OwnedItem      @relation(fields: [ownedItemId], references: [id], onDelete: Cascade)
+  position        Int
+  gemDefinitionId String?
+  gemDefinition   GemDefinition? @relation(fields: [gemDefinitionId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@id([ownedItemId, position])
+  @@index([gemDefinitionId])
+  @@map("item_sockets")
+}
+
+enum ForgeOperationType {
+  UPGRADE
+  SOCKET_UNLOCK
+  GEM_INSERT
+}
+
+enum ForgeOperationResult {
+  SUCCESS
+  FAILURE
+}
+
+model ForgeOperation {
+  id          String               @id @default(uuid())
+  characterId String
+  character   Character            @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  ownedItemId String
+  ownedItem   OwnedItem            @relation(fields: [ownedItemId], references: [id], onDelete: Cascade)
+  type        ForgeOperationType
+  result      ForgeOperationResult
+  goldCost    BigInt               @default(0)
+  fromLevel   Int?
+  toLevel     Int?
+  createdAt   DateTime             @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([ownedItemId, createdAt])
+  @@map("forge_operations")
 }
 
 // ---------------------------------------------------------------------
@@ -411,6 +543,38 @@ enum TransactionType {
   PROPERTY_RESTORATION
   ADMIN_ADJUSTMENT
   ITEM_SALE
+  BLACKSMITH_UPGRADE
+  BLACKSMITH_SOCKET_UNLOCK
+  BLACKSMITH_GEM_INSERT
+  JEWELER_GEM_COMBINE
+  JEWELER_GEM_EXTRACT
+  MARKET_REFRESH
+  TAVERN_REFRESH
+  TAVERN_PROVISION_PURCHASE
+}
+
+enum TavernQuestDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum TavernQuestStatus {
+  ACTIVE
+  RESOLVED
+  CLAIMED
+}
+
+enum TavernChoiceAlignment {
+  GOOD
+  NEUTRAL
+  EVIL
+}
+
+enum TavernProvisionType {
+  HEALING_POTION
+  TRAVEL_BANDAGE
+  VAEL_ANTIDOTE
 }
 
 enum MissionResult {
@@ -434,27 +598,257 @@ model MissionProgress {
 }
 
 model MissionAttempt {
-  id                String           @id @default(uuid())
-  characterId       String
-  character         Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  tier              Int
-  title             String
-  description       String
-  outcomeText       String
-  result            MissionResult
-  morality          MissionMorality?
-  choiceTitle       String?
-  choiceDescription String?
-  reputationChange  Int              @default(0)
-  goldReward        BigInt           @default(0)
-  experienceReward  BigInt           @default(0)
-  hpLost            Int
-  rewardItemId      String?
-  rewardItem        Item?            @relation(fields: [rewardItemId], references: [id], onDelete: SetNull)
-  createdAt         DateTime         @default(now())
+  id                    String           @id @default(uuid())
+  characterId           String
+  character             Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tier                  Int
+  title                 String
+  description           String
+  outcomeText           String
+  result                MissionResult
+  morality              MissionMorality?
+  choiceTitle           String?
+  choiceDescription     String?
+  reputationChange      Int              @default(0)
+  goldReward            BigInt           @default(0)
+  experienceReward      BigInt           @default(0)
+  hpLost                Int
+  rewardItemId          String?
+  rewardItem            Item?            @relation(fields: [rewardItemId], references: [id], onDelete: SetNull)
+  rewardGemDefinitionId String?
+  rewardGemDefinition   GemDefinition?   @relation(fields: [rewardGemDefinitionId], references: [id], onDelete: SetNull)
+  createdAt             DateTime         @default(now())
 
   @@index([characterId, createdAt])
+  @@index([rewardGemDefinitionId])
   @@map("mission_attempts")
+}
+
+model TavernBoard {
+  id           String        @id @default(uuid())
+  characterId  String        @unique
+  character    Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  refreshDate  DateTime      @db.Date
+  refreshCount Int           @default(0)
+  generatedAt  DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  offers       TavernOffer[]
+
+  @@map("tavern_boards")
+}
+
+model TavernOffer {
+  id               String                @id @default(uuid())
+  boardId          String
+  board            TavernBoard           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  templateKey      String
+  difficulty       TavernQuestDifficulty
+  title            String
+  region           String
+  summary          String
+  stageCount       Int
+  recommendedLevel Int
+  encounterSummary String
+  goldMin          Int
+  goldMax          Int
+  experienceMin    BigInt
+  experienceMax    BigInt
+  itemChance       Float
+  gemChance        Float
+  hpRiskMinPercent Int
+  hpRiskMaxPercent Int
+  createdAt        DateTime              @default(now())
+
+  @@index([boardId, difficulty])
+  @@map("tavern_offers")
+}
+
+model TavernQuestRun {
+  id                    String                 @id @default(uuid())
+  characterId           String
+  character             Character              @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  templateKey           String
+  difficulty            TavernQuestDifficulty
+  title                 String
+  region                String
+  summary               String
+  stageIndex            Int                    @default(0)
+  stageCount            Int
+  score                 Int                    @default(0)
+  status                TavernQuestStatus      @default(ACTIVE)
+  result                MissionResult?
+  goldMin               Int
+  goldMax               Int
+  experienceMin         BigInt
+  experienceMax         BigInt
+  itemChance            Float
+  gemChance             Float
+  hpRiskMinPercent      Int
+  hpRiskMaxPercent      Int
+  goldReward            BigInt                 @default(0)
+  experienceReward      BigInt                 @default(0)
+  reputationChange      Int                    @default(0)
+  hpLost                Int                    @default(0)
+  startingHp            Int                    @default(1)
+  journeyHp             Int                    @default(1)
+  maxHpSnapshot         Int                    @default(1)
+  rewardItemId          String?
+  rewardItem            Item?                  @relation("TavernRandomReward", fields: [rewardItemId], references: [id], onDelete: SetNull)
+  storyRelicItemId      String?
+  storyRelicItem        Item?                  @relation("TavernStoryRelic", fields: [storyRelicItemId], references: [id], onDelete: SetNull)
+  storyRelicAwarded     Boolean                @default(false)
+  rewardGemDefinitionId String?
+  rewardGemDefinition   GemDefinition?         @relation(fields: [rewardGemDefinitionId], references: [id], onDelete: SetNull)
+  endingTitle           String?
+  endingText            String?
+  endingKey             String?
+  startedAt             DateTime               @default(now())
+  resolvedAt            DateTime?
+  claimedAt             DateTime?
+  decisions             TavernQuestDecision[]
+  provisions            TavernQuestProvision[]
+  encounters            TavernQuestEncounter[]
+  puzzles               TavernQuestPuzzle[]
+
+  @@index([characterId, status])
+  @@index([characterId, startedAt])
+  @@index([rewardItemId])
+  @@index([storyRelicItemId])
+  @@index([rewardGemDefinitionId])
+  @@map("tavern_quest_runs")
+}
+
+model TavernChronicleEntry {
+  id               String                  @id @default(uuid())
+  characterId      String
+  character        Character               @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  templateKey      String
+  title            String
+  region           String
+  completions      Int                     @default(0)
+  successes        Int                     @default(0)
+  failures         Int                     @default(0)
+  bestScore        Int                     @default(-999)
+  bestEndingKey    String?
+  bestEndingTitle  String?
+  relicClaimed     Boolean                 @default(false)
+  relicItemId      String?
+  relicItem        Item?                   @relation(fields: [relicItemId], references: [id], onDelete: SetNull)
+  firstCompletedAt DateTime                @default(now())
+  lastCompletedAt  DateTime                @default(now())
+  endings          TavernChronicleEnding[]
+
+  @@unique([characterId, templateKey])
+  @@index([characterId, lastCompletedAt(sort: Desc)])
+  @@index([relicItemId])
+  @@map("tavern_chronicle_entries")
+}
+
+model TavernChronicleEnding {
+  id                String               @id @default(uuid())
+  chronicleEntryId  String
+  chronicleEntry    TavernChronicleEntry @relation(fields: [chronicleEntryId], references: [id], onDelete: Cascade)
+  endingKey         String
+  endingTitle       String
+  timesReached      Int                  @default(1)
+  bestScore         Int
+  firstDiscoveredAt DateTime             @default(now())
+  lastReachedAt     DateTime             @default(now())
+
+  @@unique([chronicleEntryId, endingKey])
+  @@index([chronicleEntryId, firstDiscoveredAt])
+  @@map("tavern_chronicle_endings")
+}
+
+model TavernQuestPuzzle {
+  id             String         @id @default(uuid())
+  runId          String
+  run            TavernQuestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stageIndex     Int
+  puzzleKey      String
+  attempts       Int            @default(0)
+  maxAttempts    Int            @default(2)
+  solved         Boolean?
+  selectedAnswer Json?
+  scoreDelta     Int            @default(0)
+  outcomeText    String?
+  createdAt      DateTime       @default(now())
+  resolvedAt     DateTime?
+
+  @@unique([runId, stageIndex])
+  @@index([runId, createdAt])
+  @@map("tavern_quest_puzzles")
+}
+
+model TavernQuestEncounter {
+  id                   String         @id @default(uuid())
+  runId                String
+  run                  TavernQuestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stageIndex           Int
+  enemyKey             String
+  enemyName            String
+  enemyTitle           String
+  enemyKind            String
+  enemyLevel           Int
+  enemyIllustrationUrl String
+  enemyMaxHp           Int
+  playerHpBefore       Int
+  playerHpAfter        Int
+  enemyHpAfter         Int
+  result               BattleResult
+  scoreDelta           Int
+  rounds               Json
+  createdAt            DateTime       @default(now())
+
+  @@unique([runId, stageIndex])
+  @@index([runId, createdAt])
+  @@map("tavern_quest_encounters")
+}
+
+model TavernProvisionStack {
+  characterId String
+  character   Character           @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  type        TavernProvisionType
+  quantity    Int                 @default(0)
+  updatedAt   DateTime            @updatedAt
+
+  @@id([characterId, type])
+  @@map("tavern_provision_stacks")
+}
+
+model TavernQuestProvision {
+  runId           String
+  run             TavernQuestRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type            TavernProvisionType
+  initialQuantity Int
+  remaining       Int
+  used            Int                 @default(0)
+
+  @@id([runId, type])
+  @@map("tavern_quest_provisions")
+}
+
+model TavernQuestDecision {
+  id              String                @id @default(uuid())
+  runId           String
+  run             TavernQuestRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stageIndex      Int
+  choiceId        String
+  choiceTitle     String
+  alignment       TavernChoiceAlignment
+  attribute       String
+  roll            Int
+  target          Int
+  succeeded       Boolean
+  scoreDelta      Int
+  reputationDelta Int
+  outcomeText     String
+  createdAt       DateTime              @default(now())
+
+  @@unique([runId, stageIndex])
+  @@index([runId, createdAt])
+  @@map("tavern_quest_decisions")
 }
 
 enum GuildMemberRole {
@@ -500,11 +894,11 @@ model Transaction {
 // zalezy dodatkowo od Item.minLevel <= Character.level (walidowane w
 // warstwie serwisu przy GET listy ofert i przy POST zakupu).
 model ShopEntry {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   itemId          String
-  item            Item     @relation(fields: [itemId], references: [id])
+  item            Item           @relation(fields: [itemId], references: [id])
   // Dzien, w ktorym oferta jest aktywna (bez czesci czasowej).
-  offerDate       DateTime @db.Date
+  offerDate       DateTime       @db.Date
   // Null = cena rowna Item.price; wypelnione = promocja/inna cena danego dnia.
   priceOverride   Int?
   // Wylosowany procent rabatu; przechowywany dla wiernego wyswietlania
@@ -512,11 +906,28 @@ model ShopEntry {
   discountPercent Int?
   // Null = bez limitu ilosciowego danego dnia.
   stockLimit      Int?
-  quantitySold    Int      @default(0)
-  createdAt       DateTime @default(now())
+  quantitySold    Int            @default(0)
+  marketRefreshId String?
+  marketRefresh   MarketRefresh? @relation(fields: [marketRefreshId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
 
-  @@unique([itemId, offerDate])
+  @@index([itemId, offerDate])
+  @@index([marketRefreshId])
   @@map("shop_entries")
+}
+
+model MarketRefresh {
+  id           String      @id @default(uuid())
+  characterId  String
+  character    Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  offerDate    DateTime    @db.Date
+  refreshCount Int         @default(0)
+  shopEntries  ShopEntry[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([characterId, offerDate])
+  @@map("market_refreshes")
 }
 
 // Podstawowa gildia: nazwa, opis i lider powiazany z postacia gracza.

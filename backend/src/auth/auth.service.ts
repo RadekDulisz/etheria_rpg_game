@@ -7,6 +7,7 @@ import type { StringValue } from 'ms';
 import { RedisService } from '../redis/redis.service';
 import { UsersService } from '../users/users.service';
 import { JwtPayload, RefreshTokenPayload } from './interfaces/jwt-payload.interface';
+import { isTestAccount } from '../test-tools/test-accounts';
 
 export interface TokenPair {
   accessToken: string;
@@ -17,6 +18,7 @@ export interface SessionUser {
   id: string;
   email: string;
   role: string;
+  testToolsEnabled: boolean;
 }
 
 const REFRESH_REDIS_PREFIX = 'refresh:';
@@ -103,7 +105,12 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       });
 
-      return { id: payload.sub, email: payload.email, role: payload.role };
+      return {
+        id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+        testToolsEnabled: isTestAccount(payload.email),
+      };
     } catch {
       return null;
     }

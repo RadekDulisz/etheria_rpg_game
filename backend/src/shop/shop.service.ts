@@ -5,14 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ItemGrade, ItemRarity, Prisma } from '@prisma/client';
+import { Item, ItemGrade, ItemRarity, Prisma } from '@prisma/client';
 import { CharactersService } from '../characters/characters.service';
+import { initialSocketState } from '../blacksmith/blacksmith.balance';
 import { PrismaService } from '../prisma/prisma.service';
 import { CatalogQueryDto, CatalogSection } from './dto/catalog-query.dto';
 
 // Po cztery oferty na kazda range. Gracz widzi swoja oraz nastepna range,
 // czyli maksymalnie osiem dopasowanych pozycji zamiast wysokopoziomowych.
 const DAILY_OFFERS_PER_GRADE = 4;
+const DAILY_PAID_REFRESH_LIMIT = 3;
 const gradeOrder = Object.values(ItemGrade);
 
 const rarityRolls: Array<{ rarity: ItemRarity; threshold: number }> = [
@@ -39,6 +41,11 @@ export function visibleMarketGrades(level: number): ItemGrade[] {
   const current = gradeForLevel(level);
   const index = gradeOrder.indexOf(current);
   return gradeOrder.slice(index, index + 2);
+}
+
+export function marketRefreshCost(level: number, refreshesUsed: number): number {
+  const baseCost = Math.max(50, level * 25);
+  return baseCost * Math.min(3, refreshesUsed + 1);
 }
 
 function todayDateOnly(): Date {
@@ -72,46 +79,14 @@ export class ShopService {
     }
 
     const allItems = await this.prisma.item.findMany({
-      where: { category: { not: 'CONSUMABLE' } },
+      where: { category: { not: 'CONSUMABLE' }, price: { gt: 0 } },
     });
     if (allItems.length === 0) {
       return;
     }
 
-    const selected: typeof allItems = [];
-
-    for (const grade of gradeOrder) {
-      const available = allItems.filter((item) => item.grade === grade);
-      while (
-        available.length > 0 &&
-        selected.filter((item) => item.grade === grade).length < DAILY_OFFERS_PER_GRADE
-      ) {
-        const roll = Math.random() * 100;
-        const desiredRarity = rarityRolls.find((entry) => roll < entry.threshold)?.rarity;
-        const matching = available.filter((item) => item.rarity === desiredRarity);
-        const pool = matching.length > 0 ? matching : available;
-        const chosen = pool[Math.floor(Math.random() * pool.length)];
-        selected.push(chosen);
-        available.splice(available.findIndex((item) => item.id === chosen.id), 1);
-      }
-    }
-
     await this.prisma.shopEntry.createMany({
-      data: selected.map((item) => {
-        const discountPercent = rollDailyDiscount();
-        return {
-          itemId: item.id,
-          offerDate,
-          discountPercent,
-          priceOverride: Math.max(1, Math.round(item.price * (1 - discountPercent / 100))),
-          stockLimit:
-            item.rarity === ItemRarity.LEGENDARY || item.rarity === ItemRarity.EPIC
-              ? 1
-              : item.rarity === ItemRarity.RARE
-                ? 2
-                : null,
-        };
-      }),
+      data: this.buildOfferData(allItems, offerDate),
     });
   }
 
@@ -122,8 +97,16 @@ export class ShopService {
     const offerDate = todayDateOnly();
     const grades = visibleMarketGrades(character.level);
 
+    const personalRefresh = await this.prisma.marketRefresh.findUnique({
+      where: { characterId_offerDate: { characterId: character.id, offerDate } },
+      select: { id: true },
+    });
     const entries = await this.prisma.shopEntry.findMany({
-      where: { offerDate, item: { grade: { in: grades } } },
+      where: {
+        offerDate,
+        marketRefreshId: personalRefresh?.id ?? null,
+        item: { grade: { in: grades }, price: { gt: 0 } },
+      },
       include: { item: true },
     });
 
@@ -135,10 +118,75 @@ export class ShopService {
     }));
   }
 
+  async getRefreshStatus(userId: string) {
+    const character = await this.charactersService.getByUserId(userId);
+    const offerDate = todayDateOnly();
+    const state = await this.prisma.marketRefresh.findUnique({
+      where: { characterId_offerDate: { characterId: character.id, offerDate } },
+      select: { refreshCount: true },
+    });
+    const refreshesUsed = state?.refreshCount ?? 0;
+    return {
+      refreshesUsed,
+      refreshesRemaining: Math.max(0, DAILY_PAID_REFRESH_LIMIT - refreshesUsed),
+      nextRefreshCost: refreshesUsed < DAILY_PAID_REFRESH_LIMIT
+        ? marketRefreshCost(character.level, refreshesUsed)
+        : null,
+    };
+  }
+
+  async refreshMarket(userId: string) {
+    const character = await this.charactersService.getByUserId(userId);
+    const offerDate = todayDateOnly();
+    const state = await this.prisma.marketRefresh.findUnique({
+      where: { characterId_offerDate: { characterId: character.id, offerDate } },
+    });
+    const refreshesUsed = state?.refreshCount ?? 0;
+    if (refreshesUsed >= DAILY_PAID_REFRESH_LIMIT) {
+      throw new ConflictException('Wykorzystano już trzy odświeżenia targowiska na dziś');
+    }
+
+    const cost = marketRefreshCost(character.level, refreshesUsed);
+    if (character.gold < BigInt(cost)) {
+      throw new ConflictException('Masz za mało złota na odświeżenie oferty');
+    }
+
+    const allItems = await this.prisma.item.findMany({
+      where: { category: { not: 'CONSUMABLE' }, price: { gt: 0 } },
+    });
+    if (!allItems.length) throw new NotFoundException('Brak przedmiotów do wylosowania');
+
+    const newGold = character.gold - BigInt(cost);
+    await this.prisma.$transaction(async (tx) => {
+      const refresh = await tx.marketRefresh.upsert({
+        where: { characterId_offerDate: { characterId: character.id, offerDate } },
+        create: { characterId: character.id, offerDate, refreshCount: 1 },
+        update: { refreshCount: { increment: 1 } },
+      });
+      await tx.shopEntry.deleteMany({ where: { marketRefreshId: refresh.id } });
+      await tx.shopEntry.createMany({
+        data: this.buildOfferData(allItems, offerDate, refresh.id),
+      });
+      await tx.character.update({ where: { id: character.id }, data: { gold: newGold } });
+      await tx.transaction.create({
+        data: {
+          characterId: character.id,
+          type: 'MARKET_REFRESH',
+          amount: -BigInt(cost),
+          balanceAfter: newGold,
+          referenceId: refresh.id,
+          description: `Odświeżenie targowiska ${refreshesUsed + 1}/${DAILY_PAID_REFRESH_LIMIT}`,
+        },
+      });
+    });
+
+    return this.getRefreshStatus(userId);
+  }
+
   async getCatalog(userId: string, query: CatalogQueryDto) {
     const character = await this.charactersService.getByUserId(userId);
     const where: Prisma.ItemWhereInput = {
-      AND: [catalogWhere(query.section), { grade: query.grade }],
+      AND: [catalogWhere(query.section), { grade: query.grade }, { price: { gt: 0 } }],
     };
     const [items, total] = await Promise.all([
       this.prisma.item.findMany({
@@ -161,6 +209,7 @@ export class ShopService {
 
   async getCatalogSummary() {
     const items = await this.prisma.item.findMany({
+      where: { price: { gt: 0 } },
       select: { category: true, slotGroup: true, grade: true },
     });
 
@@ -185,7 +234,7 @@ export class ShopService {
 
     const entry = await this.prisma.shopEntry.findUnique({
       where: { id: shopEntryId },
-      include: { item: true },
+      include: { item: true, marketRefresh: true },
     });
     if (!entry) {
       throw new NotFoundException('Oferta sklepu nie istnieje');
@@ -196,8 +245,8 @@ export class ShopService {
       throw new BadRequestException('Ta oferta nie jest już dostępna');
     }
 
-    if (character.level < entry.item.minLevel) {
-      throw new BadRequestException(`Ten przedmiot wymaga poziomu ${entry.item.minLevel}`);
+    if (entry.marketRefresh && entry.marketRefresh.characterId !== character.id) {
+      throw new NotFoundException('Oferta targowiska nie istnieje');
     }
 
     if (entry.stockLimit !== null && entry.quantitySold + quantity > entry.stockLimit) {
@@ -224,11 +273,15 @@ export class ShopService {
         data: { quantitySold: { increment: quantity } },
       });
 
-      await tx.inventoryItem.upsert({
-        where: { combatantId_itemId: { combatantId, itemId: entry.itemId } },
-        create: { combatantId, itemId: entry.itemId, quantity },
-        update: { quantity: { increment: quantity } },
-      });
+      for (let index = 0; index < quantity; index += 1) {
+        await tx.ownedItem.create({
+          data: {
+            combatantId,
+            itemId: entry.itemId,
+            ...initialSocketState(entry.item),
+          },
+        });
+      }
 
       await tx.transaction.create({
         data: {
@@ -251,10 +304,6 @@ export class ShopService {
     if (!item) {
       throw new NotFoundException('Przedmiot kupca nie istnieje');
     }
-    if (character.level < item.minLevel) {
-      throw new BadRequestException(`Ten przedmiot wymaga poziomu ${item.minLevel}`);
-    }
-
     const totalPrice = BigInt(item.price * quantity);
     if (character.gold < totalPrice) {
       throw new ConflictException('Masz za mało złota');
@@ -266,11 +315,11 @@ export class ShopService {
         where: { id: character.id },
         data: { gold: newGold },
       });
-      await tx.inventoryItem.upsert({
-        where: { combatantId_itemId: { combatantId, itemId } },
-        create: { combatantId, itemId, quantity },
-        update: { quantity: { increment: quantity } },
-      });
+      for (let index = 0; index < quantity; index += 1) {
+        await tx.ownedItem.create({
+          data: { combatantId, itemId, ...initialSocketState(item) },
+        });
+      }
       await tx.transaction.create({
         data: {
           characterId: character.id,
@@ -281,6 +330,40 @@ export class ShopService {
           description: `Zakup u kupca: ${item.name} x${quantity}`,
         },
       });
+    });
+  }
+
+  private buildOfferData(
+    allItems: Item[],
+    offerDate: Date,
+    marketRefreshId?: string,
+    rng: () => number = Math.random,
+  ): Prisma.ShopEntryCreateManyInput[] {
+    const selected: Item[] = [];
+    for (const grade of gradeOrder) {
+      const available = allItems.filter((item) => item.grade === grade);
+      while (available.length > 0 && selected.filter((item) => item.grade === grade).length < DAILY_OFFERS_PER_GRADE) {
+        const rarityRoll = rng() * 100;
+        const desiredRarity = rarityRolls.find((entry) => rarityRoll < entry.threshold)?.rarity;
+        const matching = available.filter((item) => item.rarity === desiredRarity);
+        const pool = matching.length ? matching : available;
+        const chosen = pool[Math.floor(rng() * pool.length)];
+        selected.push(chosen);
+        available.splice(available.findIndex((item) => item.id === chosen.id), 1);
+      }
+    }
+    return selected.map((item) => {
+      const discountPercent = rollDailyDiscount(rng);
+      return {
+        itemId: item.id,
+        offerDate,
+        marketRefreshId,
+        discountPercent,
+        priceOverride: Math.max(1, Math.round(item.price * (1 - discountPercent / 100))),
+        stockLimit: item.rarity === ItemRarity.LEGENDARY || item.rarity === ItemRarity.EPIC
+          ? 1
+          : item.rarity === ItemRarity.RARE ? 2 : null,
+      };
     });
   }
 }

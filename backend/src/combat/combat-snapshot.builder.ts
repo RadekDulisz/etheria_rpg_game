@@ -1,8 +1,17 @@
-import { CombatantStats, CombatantWeaponExpertise, EquippedItem, Item } from '@prisma/client';
+import { CombatantStats, CombatantWeaponExpertise, EquipmentSlot, Item } from '@prisma/client';
+import {
+  OwnedItemWithDetails,
+  resolveOwnedItemStats,
+} from '../blacksmith/blacksmith.balance';
 import { BASE_UNARMED_ATTACK } from './combat.constants';
 import { CombatSnapshot } from './combat.types';
+import { calculateWeaponExpertiseProgress } from './weapon-expertise';
 
-type EquippedItemWithItem = EquippedItem & { item: Item };
+export type CombatEquipmentEntry = {
+  slot: EquipmentSlot;
+  item?: Item;
+  ownedItem?: OwnedItemWithDetails;
+};
 
 /**
  * Przeksztalca surowe dane z bazy (staty bazowe + zalozony ekwipunek +
@@ -14,7 +23,7 @@ type EquippedItemWithItem = EquippedItem & { item: Item };
 export function buildCombatSnapshot(
   combatantId: string,
   stats: CombatantStats,
-  equippedItems: EquippedItemWithItem[],
+  equippedItems: CombatEquipmentEntry[],
   weaponExpertise: CombatantWeaponExpertise[],
 ): CombatSnapshot {
   let strength = stats.strength;
@@ -31,7 +40,10 @@ export function buildCombatSnapshot(
   let weaponType: CombatSnapshot['weaponType'] = null;
 
   for (const equipped of equippedItems) {
-    const { item } = equipped;
+    const item = equipped.ownedItem
+      ? resolveOwnedItemStats(equipped.ownedItem)
+      : equipped.item;
+    if (!item) continue;
     strength += item.strengthBonus;
     agility += item.agilityBonus;
     endurance += item.enduranceBonus;
@@ -61,7 +73,9 @@ export function buildCombatSnapshot(
   }
 
   const weaponExpertiseLevel = weaponType
-    ? (weaponExpertise.find((entry) => entry.weaponType === weaponType)?.level ?? 1)
+    ? calculateWeaponExpertiseProgress(
+        weaponExpertise.find((entry) => entry.weaponType === weaponType)?.experience ?? 0,
+      ).level
     : 0;
 
   return {

@@ -1,0 +1,29 @@
+import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+
+export enum TestToolAction {
+  ADD_GOLD = 'ADD_GOLD',
+  ADD_EXPERIENCE = 'ADD_EXPERIENCE',
+  SET_LEVEL = 'SET_LEVEL',
+  SET_HEALTH_PERCENT = 'SET_HEALTH_PERCENT',
+  SET_REPUTATION = 'SET_REPUTATION',
+  SET_LEARNING_POINTS = 'SET_LEARNING_POINTS',
+  SET_ARENA_RATING = 'SET_ARENA_RATING',
+  MAX_EXPERTISE = 'MAX_EXPERTISE',
+  RESET_EXPERTISE = 'RESET_EXPERTISE',
+  ADD_ALL_GEMS = 'ADD_ALL_GEMS',
+  GUARANTEE_LEGENDARY_MISSION = 'GUARANTEE_LEGENDARY_MISSION',
+  RESET_LIMITS = 'RESET_LIMITS',
+  RESET_TAVERN_QUEST = 'RESET_TAVERN_QUEST',
+  REROLL_TAVERN_OFFERS = 'REROLL_TAVERN_OFFERS',
+}
+
+export class ExecuteTestToolDto {
+  @IsEnum(TestToolAction)
+  action!: TestToolAction;
+
+  @IsOptional()
+  @IsInt()
+  @Min(-1_000_000_000)
+  @Max(1_000_000_000)
+  value?: number;
+}

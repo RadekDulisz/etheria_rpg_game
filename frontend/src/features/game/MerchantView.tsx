@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getShopCatalog, getShopCatalogSummary, purchaseCatalogItem } from '../../api/shop.api';
-import { ActionNotice } from '../../components/ui/ActionNotice';
+import { ActionToast } from '../../components/ui/ActionToast';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Pagination } from '../../components/ui/Pagination';
@@ -10,7 +10,7 @@ import { GameIcon } from '../../components/ui/GameIcon';
 import type { GameIconName } from '../../lib/game-icons';
 import { getApiErrorMessage } from '../../lib/api-errors';
 import { formatItemGrade } from '../../lib/item-grades';
-import type { CatalogSection, ItemGrade } from '../../types/game';
+import type { CatalogSection, CharacterStats, EquippedEntry, ItemGrade } from '../../types/game';
 import { ShopItemCard } from './ShopItemCard';
 
 const PAGE_SIZE = 12;
@@ -31,7 +31,7 @@ const gradeMarks: Record<ItemGrade, string> = {
   NO_GRADE: 'N', D: 'D', C: 'C', B: 'B', A: 'A', S: 'S', RUNIC: 'R', ANCIENT: 'P',
 };
 
-export function MerchantView({ characterGold }: { characterGold: string }) {
+export function MerchantView({ characterGold, equipment, characterStats }: { characterGold: string; equipment: EquippedEntry[]; characterStats: CharacterStats | null }) {
   const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<CatalogSection | null>(null);
   const [activeGrade, setActiveGrade] = useState<ItemGrade | null>(null);
@@ -76,8 +76,7 @@ export function MerchantView({ characterGold }: { characterGold: string }) {
   return (
     <div className="view-enter">
       <SectionTitle eyebrow="Kupiec" title="Stała oferta" description="Wybierz kategorię i rangę wyposażenia. Na każdej stronie znajdziesz najwyżej dwanaście przedmiotów." />
-      {successMessage ? <ActionNotice tone="success" onDismiss={() => setSuccessMessage(null)}>{successMessage}</ActionNotice> : null}
-      {purchaseMutation.isError ? <ActionNotice tone="error" onDismiss={() => purchaseMutation.reset()}>{getApiErrorMessage(purchaseMutation.error)}</ActionNotice> : null}
+      {successMessage ? <ActionToast onDismiss={() => setSuccessMessage(null)}>{successMessage}</ActionToast> : null}
 
       {activeSection === null ? (
         <div className="catalog-sections">
@@ -105,7 +104,7 @@ export function MerchantView({ characterGold }: { characterGold: string }) {
         <div>
           <div className="catalog-heading"><Button variant="secondary" onClick={back}>← Wróć do rang</Button><div><p className="text-lg text-amber-100 fantasy-title">{activeDefinition?.title} · {formatItemGrade(activeGrade)}</p><p className="mt-1 text-xs text-stone-500">{catalogQuery.data?.total ?? 0} przedmiotów · strona {page}</p></div></div>
           {catalogQuery.isLoading ? <EmptyState title="Kupiec sprawdza magazyn">Trwa przygotowywanie wybranej części oferty.</EmptyState> : catalogQuery.data?.items.length ? <>
-            <div className="shop-grid">{catalogQuery.data.items.map((item) => <ShopItemCard key={item.id} item={item} price={item.price} characterGold={characterGold} locked={item.locked} purchasing={purchaseMutation.isPending && purchaseMutation.variables?.itemId === item.id} onPurchase={(quantity) => purchaseMutation.mutate({ itemId: item.id, quantity })} />)}</div>
+            <div className="shop-grid">{catalogQuery.data.items.map((item) => <ShopItemCard key={item.id} item={item} price={item.price} characterGold={characterGold} locked={item.locked} purchasing={purchaseMutation.isPending && purchaseMutation.variables?.itemId === item.id} equipment={equipment} characterStats={characterStats} error={purchaseMutation.isError && purchaseMutation.variables?.itemId === item.id ? getApiErrorMessage(purchaseMutation.error) : undefined} onDismissError={() => purchaseMutation.reset()} onPurchase={(quantity) => purchaseMutation.mutate({ itemId: item.id, quantity })} />)}</div>
             <Pagination page={page} totalPages={catalogQuery.data.totalPages} onChange={(nextPage) => { setPage(nextPage); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
           </> : <EmptyState title="Brak przedmiotów">Kupiec nie ma obecnie wyposażenia tej rangi.</EmptyState>}
         </div>

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,14 +12,25 @@ export class BattlesController {
 
   @Post('arena/opponent')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  getArenaOpponent(@CurrentUser() user: JwtPayload) {
-    return this.battlesService.getArenaOpponent(user.sub);
+  getArenaOpponent(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: {
+      excludeOpponentId?: string;
+      alignment?: 'GOOD' | 'EVIL';
+    } = {},
+  ) {
+    return this.battlesService.getArenaOpponent(
+      user.sub,
+      Math.random,
+      body.excludeOpponentId,
+      body.alignment,
+    );
   }
 
   @Post('arena/:botId')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   fightArena(@CurrentUser() user: JwtPayload, @Param('botId') botId: string) {
-    return this.battlesService.fightBot(user.sub, botId);
+    return this.battlesService.fightBot(user.sub, botId, Math.random, true);
   }
 
   @Post('pve/:botId')
@@ -35,6 +46,11 @@ export class BattlesController {
     @Param('targetCharacterId') targetCharacterId: string,
   ) {
     return this.battlesService.fightPlayer(user.sub, targetCharacterId);
+  }
+
+  @Get('arena/profile')
+  getArenaProfile(@CurrentUser() user: JwtPayload) {
+    return this.battlesService.getArenaProfile(user.sub);
   }
 
   @Get(':id')

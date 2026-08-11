@@ -56,6 +56,15 @@ npm run dev
 cd backend && npm run test
 ```
 
+## Dokumentacja balansu
+
+Aktualne znaczenie STR, DEX, CON i INT oraz wzory HP, celności, parowania,
+trafień krytycznych, ataku, obrony, obrażeń, biegłości i rozwoju poziomów
+znajdują się w [`docs/BALANS_STATYSTYK.md`](docs/BALANS_STATYSTYK.md).
+
+Projekt karczmy, tablicy zleceń oraz przyszłych wieloetapowych historii
+znajduje się w [`docs/SYSTEM_KARCZMY_I_ZLECEN.md`](docs/SYSTEM_KARCZMY_I_ZLECEN.md).
+
 ## Testy obciazeniowe (smoke)
 
 ```bash

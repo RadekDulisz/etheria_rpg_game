@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { embarkOnMission, getMissionOverview } from '../../api/missions.api';
-import { ActionNotice } from '../../components/ui/ActionNotice';
+import { ActionBubble } from '../../components/ui/ActionBubble';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { GamePanel } from '../../components/ui/GamePanel';
@@ -14,7 +14,8 @@ import { ExpeditionSequence } from './ExpeditionSequence';
 
 export function MissionsView() {
   const queryClient = useQueryClient();
-  const [healthWarning, setHealthWarning] = useState<string | null>(null);
+  const [healthWarning, setHealthWarning] = useState<{ message: string; morality: MissionMorality } | null>(null);
+  const [activeMorality, setActiveMorality] = useState<MissionMorality | null>(null);
   const [sequenceOpen, setSequenceOpen] = useState(false);
   const overviewQuery = useQuery({ queryKey: ['missions'], queryFn: getMissionOverview, retry: false });
   const missionMutation = useMutation({
@@ -34,8 +35,12 @@ export function MissionsView() {
   const canEmbark = Boolean(overview && overview.health.current > overview.health.max * 0.5);
 
   function beginExpedition(morality: MissionMorality) {
+    setActiveMorality(morality);
     if (!canEmbark) {
-      setHealthWarning('Bohater ma 50% HP lub mniej i mógłby zginąć. Poczekaj, aż zdrowie odnowi się powyżej 50%.');
+      setHealthWarning({
+        morality,
+        message: 'Bohater ma 50% HP lub mniej i mógłby zginąć. Poczekaj, aż zdrowie odnowi się powyżej 50%.',
+      });
       return;
     }
     setHealthWarning(null);
@@ -51,20 +56,13 @@ export function MissionsView() {
         description="Wyślij bohatera w nieznane. Rodzaj wyprawy jest losowany automatycznie, a nagrody rosną wraz z poziomem postaci i niebezpieczeństwem szlaku."
       />
 
-      {missionMutation.isError ? (
-        <ActionNotice tone="error" onDismiss={() => missionMutation.reset()}>{getApiErrorMessage(missionMutation.error)}</ActionNotice>
-      ) : null}
-      {healthWarning ? (
-        <ActionNotice tone="error" onDismiss={() => setHealthWarning(null)}>{healthWarning}</ActionNotice>
-      ) : null}
-
       <section className="mission-intro">
           <img src="/assets/missions/mission-tier-1.jpg" alt="Bohater wyruszający o świcie na trakt Etherii" />
           <div className="mission-intro-shade" />
           <div className="mission-intro-content">
             <p className="text-[0.62rem] uppercase tracking-[0.28em] text-amber-400/70">Los zdecyduje o szlaku</p>
             <h2 className="mt-2 max-w-xl text-3xl text-amber-50 fantasy-title">Za bramą czeka sława albo blizny</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300/80">Każda wyprawa ma 70% szans powodzenia i kosztuje część zdrowia. Po dziesięciu wyprawach bez legendarnego zlecenia następne losowanie gwarantuje typ V.</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-stone-300/80">Każda wyprawa ma obecnie {overview?.successChance ?? 70}% szans powodzenia i kosztuje część zdrowia. Po dziesięciu wyprawach bez legendarnego zlecenia następne losowanie gwarantuje typ V.</p>
           </div>
       </section>
 
@@ -84,6 +82,7 @@ export function MissionsView() {
                     <div className="mission-tier-rewards">
                       <span><CurrencyAmount value={tier.goldMin} compact />–{formatInteger(tier.goldMax)}</span>
                       <span>{formatInteger(tier.experienceMin)}–{formatInteger(tier.experienceMax)} XP</span>
+                      <span>{tier.itemRewardChance}% szans na przedmiot</span>
                       <span>−{tier.hpPercentMin}–{tier.hpPercentMax}% HP</span>
                     </div>
                   </div>
@@ -97,21 +96,36 @@ export function MissionsView() {
           <GamePanel title="Przed wyruszeniem" eyebrow="Stan bohatera">
             <HealthBar value={overview?.health.current ?? 0} max={overview?.health.max ?? 0} />
             <dl className="mission-rules">
-              <div><dt>Powodzenie</dt><dd>70%</dd></div>
-              <div><dt>Losowy przedmiot</dt><dd>5%</dd></div>
+              <div><dt>Powodzenie</dt><dd>{overview?.successChance ?? 70}%{overview?.propertyBonus.level ? <small>+{overview.propertyBonus.successPercent} p.p. z posiadłości</small> : null}</dd></div>
+              <div><dt>Złoto z wypraw</dt><dd>{overview?.propertyBonus.level ? `+${overview.propertyBonus.goldPercent}%` : 'Bez premii'}{overview?.propertyBonus.level ? <small>posiadłość, poziom {overview.propertyBonus.level}</small> : null}</dd></div>
+              <div><dt>Losowy przedmiot</dt><dd>{overview ? `${overview.tiers[0]?.itemRewardChance ?? 4}–${overview.tiers[4]?.itemRewardChance ?? 15}%` : '4–15%'}{overview?.propertyBonus.level ? <small>+{overview.propertyBonus.itemChancePercent} p.p. z posiadłości</small> : null}</dd></div>
               <div><dt>Wyprawy łącznie</dt><dd>{overview?.totalMissions ?? 0}</dd></div>
               <div><dt>Gwarancja typu V za</dt><dd>{overview?.missionsUntilGuaranteedTierFive ?? 10}</dd></div>
             </dl>
             <div className="mission-morality-choice">
               <p>Wybierz drogę bohatera</p>
-              <button className="mission-morality-card mission-morality-good" disabled={missionMutation.isPending || overviewQuery.isLoading} onClick={() => beginExpedition('GOOD')}>
-                <span className="mission-morality-mark"><span>✦</span></span>
-                <span><strong>Szlachetna droga</strong><small>Chroń bezbronnych i odrzuć łatwy zysk.</small><em>+1 do +3 reputacji</em></span>
-              </button>
-              <button className="mission-morality-card mission-morality-evil" disabled={missionMutation.isPending || overviewQuery.isLoading} onClick={() => beginExpedition('EVIL')}>
-                <span className="mission-morality-mark"><span>◆</span></span>
-                <span><strong>Mroczna droga</strong><small>Wykorzystaj chaos, strach i cudzą słabość.</small><em>−1 do −3 reputacji</em></span>
-              </button>
+              <div className="action-feedback-anchor">
+                <button className="mission-morality-card mission-morality-good" disabled={missionMutation.isPending || overviewQuery.isLoading} onClick={() => beginExpedition('GOOD')}>
+                  <span className="mission-morality-mark"><span>✦</span></span>
+                  <span><strong>Szlachetna droga</strong><small>Chroń bezbronnych i odrzuć łatwy zysk.</small><em>+1 do +3 reputacji</em></span>
+                </button>
+                {healthWarning?.morality === 'GOOD' || (missionMutation.isError && activeMorality === 'GOOD') ? (
+                  <ActionBubble onDismiss={() => { setHealthWarning(null); missionMutation.reset(); }}>
+                    {healthWarning?.message ?? getApiErrorMessage(missionMutation.error)}
+                  </ActionBubble>
+                ) : null}
+              </div>
+              <div className="action-feedback-anchor">
+                <button className="mission-morality-card mission-morality-evil" disabled={missionMutation.isPending || overviewQuery.isLoading} onClick={() => beginExpedition('EVIL')}>
+                  <span className="mission-morality-mark"><span>◆</span></span>
+                  <span><strong>Mroczna droga</strong><small>Wykorzystaj chaos, strach i cudzą słabość.</small><em>−1 do −3 reputacji</em></span>
+                </button>
+                {healthWarning?.morality === 'EVIL' || (missionMutation.isError && activeMorality === 'EVIL') ? (
+                  <ActionBubble onDismiss={() => { setHealthWarning(null); missionMutation.reset(); }}>
+                    {healthWarning?.message ?? getApiErrorMessage(missionMutation.error)}
+                  </ActionBubble>
+                ) : null}
+              </div>
               {missionMutation.isPending ? <span className="mission-morality-pending">Bohater jest już na szlaku…</span> : null}
             </div>
             <p className="mt-3 text-center text-[0.65rem] leading-5 text-stone-500">Zdrowie odnawia się samo: 5% maksymalnego HP co 5 minut. Wyruszyć można wyłącznie z poziomem zdrowia powyżej 50%.</p>

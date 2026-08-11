@@ -13,10 +13,13 @@ const navigationItems: NavigationItem[] = [
   { id: 'inventory', rune: 'III', label: 'Zbrojownia', description: 'Plecak i wyposażenie' },
   { id: 'shop', rune: 'IV', label: 'Targowisko', description: 'Oferta dnia' },
   { id: 'merchant', rune: 'V', label: 'Kupiec', description: 'Stały katalog' },
-  { id: 'pve', rune: 'VI', label: 'Wyprawy', description: 'Starcia PvE' },
-  { id: 'pvp', rune: 'VII', label: 'Arena', description: 'Pojedynki graczy' },
-  { id: 'guild', rune: 'VIII', label: 'Bractwo', description: 'Gildia i wojny' },
-  { id: 'property', rune: 'IX', label: 'Posiadłość', description: 'Rozbudowa i dochód' },
+  { id: 'blacksmith', rune: 'VI', label: 'Kowal', description: 'Ulepszenia i gniazda' },
+  { id: 'jeweler', rune: 'VII', label: 'Jubiler', description: 'Szlifowanie i odzysk' },
+  { id: 'tavern', rune: 'VIII', label: 'Karczma', description: 'Fabularne zlecenia' },
+  { id: 'pve', rune: 'IX', label: 'Wyprawy', description: 'Starcia PvE' },
+  { id: 'pvp', rune: 'X', label: 'Arena', description: 'Pojedynki graczy' },
+  { id: 'guild', rune: 'XI', label: 'Bractwo', description: 'Gildia i wojny' },
+  { id: 'property', rune: 'XII', label: 'Posiadłość', description: 'Rozbudowa i dochód' },
 ];
 
 interface GameNavigationProps {

@@ -6,17 +6,18 @@ describe('calculatePropertyBonuses', () => {
 
     expect(bonuses.alignment).toBe('GOOD');
     expect(bonuses.regenMultiplier).toBe(1.6);
-    expect(bonuses.missionSuccessBonus).toBe(0.03);
-    expect(bonuses.missionGoldMultiplier).toBe(1);
+    expect(bonuses.missionSuccessBonus).toBeCloseTo(0.045);
+    expect(bonuses.missionGoldMultiplier).toBeCloseTo(1.04);
+    expect(bonuses.itemRewardChanceBonus).toBeCloseTo(0.005);
   });
 
   it('zla reputacja wzmacnia zloto i szanse zdobycia przedmiotu', () => {
     const bonuses = calculatePropertyBonuses(10, -10_000);
 
     expect(bonuses.alignment).toBe('EVIL');
-    expect(bonuses.missionGoldMultiplier).toBe(1.09);
-    expect(bonuses.itemRewardChanceBonus).toBe(0.012);
-    expect(bonuses.missionSuccessBonus).toBe(0);
+    expect(bonuses.missionGoldMultiplier).toBeCloseTo(1.13);
+    expect(bonuses.itemRewardChanceBonus).toBeCloseTo(0.017);
+    expect(bonuses.missionSuccessBonus).toBeCloseTo(0.015);
   });
 
   it('neutralna posiadlosc zapewnia tylko bazowy bonus poziomu', () => {
@@ -25,6 +26,9 @@ describe('calculatePropertyBonuses', () => {
     expect(bonuses.alignment).toBe('NEUTRAL');
     expect(bonuses.regenMultiplier).toBe(1.2);
     expect(bonuses.factor).toBe(0);
+    expect(bonuses.missionSuccessBonus).toBeCloseTo(0.006);
+    expect(bonuses.missionGoldMultiplier).toBeCloseTo(1.016);
+    expect(bonuses.itemRewardChanceBonus).toBeCloseTo(0.002);
   });
 });
 

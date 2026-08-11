@@ -4,7 +4,7 @@ import { CharactersService } from '../characters/characters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ItemGrade } from '@prisma/client';
 import { CatalogSection } from './dto/catalog-query.dto';
-import { rollDailyDiscount, ShopService, visibleMarketGrades } from './shop.service';
+import { marketRefreshCost, rollDailyDiscount, ShopService, visibleMarketGrades } from './shop.service';
 
 describe('ShopService', () => {
   let service: ShopService;
@@ -18,7 +18,7 @@ describe('ShopService', () => {
     };
     item: { findMany: jest.Mock; findUnique: jest.Mock; count: jest.Mock };
     character: { update: jest.Mock };
-    inventoryItem: { upsert: jest.Mock };
+    ownedItem: { create: jest.Mock };
     transaction: { create: jest.Mock };
     $transaction: jest.Mock;
   };
@@ -37,7 +37,7 @@ describe('ShopService', () => {
       },
       item: { findMany: jest.fn(), findUnique: jest.fn(), count: jest.fn() },
       character: { update: jest.fn() },
-      inventoryItem: { upsert: jest.fn() },
+      ownedItem: { create: jest.fn() },
       transaction: { create: jest.fn() },
       $transaction: jest.fn(),
     };
@@ -130,10 +130,9 @@ describe('ShopService', () => {
         where: { id: 'char-1' },
         data: { gold: 760n },
       });
-      expect(prisma.inventoryItem.upsert).toHaveBeenCalledWith({
-        where: { combatantId_itemId: { combatantId: 'combatant-1', itemId: 'item-1' } },
-        create: { combatantId: 'combatant-1', itemId: 'item-1', quantity: 2 },
-        update: { quantity: { increment: 2 } },
+      expect(prisma.ownedItem.create).toHaveBeenCalledTimes(2);
+      expect(prisma.ownedItem.create).toHaveBeenCalledWith({
+        data: { combatantId: 'combatant-1', itemId: 'item-1', socketCapacity: 0, unlockedSockets: 0 },
       });
     });
   });
@@ -149,6 +148,16 @@ describe('ShopService', () => {
     ])('losuje poprawny prog dla rzutu %p', (bucketRoll, rangeRoll, expected) => {
       const rng = jest.fn().mockReturnValueOnce(bucketRoll).mockReturnValueOnce(rangeRoll);
       expect(rollDailyDiscount(rng)).toBe(expected);
+    });
+  });
+
+  describe('koszt odświeżenia targowiska', () => {
+    it('rośnie przy każdej z trzech dziennych prób', () => {
+      expect([0, 1, 2].map((used) => marketRefreshCost(10, used))).toEqual([250, 500, 750]);
+    });
+
+    it('zachowuje minimalny koszt na początku gry', () => {
+      expect(marketRefreshCost(1, 0)).toBe(50);
     });
   });
 
@@ -186,13 +195,14 @@ describe('ShopService', () => {
       await expect(service.purchase('user-1', 'entry-1', 1)).rejects.toThrow(BadRequestException);
     });
 
-    it('rzuca BadRequestException, gdy poziom postaci jest za niski', async () => {
+    it('pozwala kupić przedmiot powyżej poziomu postaci', async () => {
       prisma.shopEntry.findUnique.mockResolvedValueOnce({
         ...baseEntry,
         item: { ...baseEntry.item, minLevel: 10 },
       });
 
-      await expect(service.purchase('user-1', 'entry-1', 1)).rejects.toThrow(BadRequestException);
+      await expect(service.purchase('user-1', 'entry-1', 1)).resolves.toBeUndefined();
+      expect(prisma.ownedItem.create).toHaveBeenCalledTimes(1);
     });
 
     it('rzuca ConflictException, gdy przekroczony limit sztuk', async () => {
@@ -223,10 +233,9 @@ describe('ShopService', () => {
         where: { id: 'char-1' },
         data: { gold: 800n }, // 1000 - 100*2
       });
-      expect(prisma.inventoryItem.upsert).toHaveBeenCalledWith({
-        where: { combatantId_itemId: { combatantId: 'combatant-1', itemId: 'item-1' } },
-        create: { combatantId: 'combatant-1', itemId: 'item-1', quantity: 2 },
-        update: { quantity: { increment: 2 } },
+      expect(prisma.ownedItem.create).toHaveBeenCalledTimes(2);
+      expect(prisma.ownedItem.create).toHaveBeenCalledWith({
+        data: { combatantId: 'combatant-1', itemId: 'item-1', socketCapacity: 0, unlockedSockets: 0 },
       });
       expect(prisma.transaction.create).toHaveBeenCalledWith({
         data: expect.objectContaining({

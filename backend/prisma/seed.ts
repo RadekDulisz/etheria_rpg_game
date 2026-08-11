@@ -1,5 +1,15 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { ItemCategory, ItemGrade, ItemRarity, Prisma, PrismaClient, SlotGroup, WeaponType } from '@prisma/client';
+import {
+  GemFamily,
+  GemTier,
+  ItemCategory,
+  ItemGrade,
+  ItemRarity,
+  Prisma,
+  PrismaClient,
+  SlotGroup,
+  WeaponType,
+} from '@prisma/client';
 import { Pool } from 'pg';
 
 const connectionString = process.env.DATABASE_URL;
@@ -9,6 +19,29 @@ if (!connectionString) {
 
 const pool = new Pool({ connectionString });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
+
+const gemTierNames: Record<GemTier, string> = {
+  SHARD: 'Okruch',
+  CUT: 'Oszlifowany',
+  FLAWLESS: 'Doskonały',
+  ROYAL: 'Królewski',
+  ANCIENT: 'Pradawny',
+};
+
+const gemFamilyNames: Record<GemFamily, string> = {
+  RUBY: 'Rubin Żaru',
+  AMETHYST: 'Ametyst Mocy',
+  EMERALD: 'Szmaragd Łowcy',
+  SAPPHIRE: 'Szafir Myśli',
+};
+
+const gemTierMinLevels: Record<GemTier, number> = {
+  SHARD: 1,
+  CUT: 20,
+  FLAWLESS: 40,
+  ROYAL: 61,
+  ANCIENT: 80,
+};
 
 /**
  * Autorski katalog inspirowany klasycznym podziałem ekwipunku MMORPG:
@@ -384,6 +417,20 @@ const relicItems: Prisma.ItemCreateInput[] = [
   { name: 'Miecz Ostatniego Smoka', description: 'Pradawna klinga o łuskowym grzbiecie, pamiętająca ogień pierwszych kuźni.', category: ItemCategory.WEAPON, slotGroup: SlotGroup.WEAPON, weaponType: WeaponType.SWORD, price: 18000, minLevel: 84, attackPower: 112, iconUrl: 'relic:ancient' },
 ];
 
+// Pamiątki fabularne z Karczmy pod Złamanym Gryfem. Cena 0 oznacza,
+// że nie trafiają do handlu i nie mogą zostać sprzedane jak zwykły łup.
+const tavernStoryRelicItems: Prisma.ItemCreateInput[] = [
+  { name: 'Odłamek Ostatniej Warty', description: 'Nosi rysę po krysztale Caeda. Rozgrzewa się, gdy ktoś odmawia bezimiennym prawa do schronienia.', category: ItemCategory.SPECIAL, rarity: ItemRarity.RARE, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.BROOCH, price: 0, minLevel: 1, enduranceBonus: 1, iconUrl: 'story-relic:ash-road-lantern' },
+  { name: 'Kamień Milczącego Młyna', description: 'Fragment żarna, które obracało się bez wiatru, wody i ludzkiej dłoni.', category: ItemCategory.SPECIAL, rarity: ItemRarity.RARE, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.BELT, price: 0, minLevel: 1, maxHpBonus: 8, iconUrl: 'story-relic:mill-below-walls' },
+  { name: 'Pieczęć Niedoręczonego Listu', description: 'Wosk pamięta adresatkę, choć wszystkie księgi twierdzą, że umarła przed trzydziestu laty.', category: ItemCategory.SPECIAL, rarity: ItemRarity.RARE, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.HAIR_ACCESSORY, price: 0, minLevel: 1, intelligenceBonus: 1, iconUrl: 'story-relic:vael-courier' },
+  { name: 'Głos Zatopionej Iglicy', description: 'Wewnątrz kryształu słychać imiona osad wykreślonych z kronik rodu Vaelów.', category: ItemCategory.SPECIAL, rarity: ItemRarity.EPIC, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.BRACELET, price: 0, minLevel: 1, strengthBonus: 1, parryBonus: 2, iconUrl: 'story-relic:stone-bridge-voices' },
+  { name: 'Medalion Białej Ćmy', description: 'Srebrne skrzydła drżą w obecności tajemnic, których Bractwo nie chce ujawnić.', category: ItemCategory.ACCESSORY, rarity: ItemRarity.EPIC, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.NECKLACE, price: 0, minLevel: 1, intelligenceBonus: 2, iconUrl: 'story-relic:white-moth-hunter' },
+  { name: 'Czarne Pióro Dziesięciny', description: 'Nigdy nie moknie i nie rzuca cienia, nawet w pełnym słońcu.', category: ItemCategory.SPECIAL, rarity: ItemRarity.EPIC, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.HAIR_ACCESSORY, price: 0, minLevel: 1, agilityBonus: 2, iconUrl: 'story-relic:raven-tithe' },
+  { name: 'Odłamek Trzynastego Dzwonu', description: 'Pod wodą wydaje czysty ton, którego nie słyszy nikt stojący na brzegu.', category: ItemCategory.SPECIAL, rarity: ItemRarity.LEGENDARY, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.BROOCH, price: 0, minLevel: 1, enduranceBonus: 2, parryBonus: 2, iconUrl: 'story-relic:drowned-bells' },
+  { name: 'Klucz Wygasłej Latarni', description: 'Pasuje do mechanizmu pod Etherią, lecz na jego krawędzi zapisano rozkaz armii Asteriona.', category: ItemCategory.ACCESSORY, rarity: ItemRarity.LEGENDARY, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.NECKLACE, price: 0, minLevel: 1, strengthBonus: 2, maxHpBonus: 12, iconUrl: 'story-relic:bone-chimera-heart' },
+  { name: 'Odłamek Ostatniej Pieczęci', description: 'Na jego powierzchni widać niebo pełne gwiazd, nawet nad Bezgwiezdnymi Rubieżami.', category: ItemCategory.SPECIAL, rarity: ItemRarity.LEGENDARY, grade: ItemGrade.NO_GRADE, slotGroup: SlotGroup.BROOCH, price: 0, minLevel: 1, strengthBonus: 1, agilityBonus: 1, enduranceBonus: 1, intelligenceBonus: 1, iconUrl: 'story-relic:last-seal-asterion' },
+];
+
 type BonusField = 'strengthBonus' | 'agilityBonus' | 'enduranceBonus' | 'intelligenceBonus';
 
 interface ItemTier {
@@ -668,6 +715,7 @@ const items: Prisma.ItemCreateInput[] = [
   ...handcraftedItems.map((item) => balanceItem(item)),
   ...generateItemFamilies(),
   ...relicItems.map((item) => balanceItem(item, ItemRarity.LEGENDARY)),
+  ...tavernStoryRelicItems,
 ];
 
 async function seedBots(): Promise<void> {
@@ -775,6 +823,17 @@ async function main(): Promise<void> {
       update: item,
       create: item,
     });
+  }
+
+  for (const family of Object.values(GemFamily)) {
+    for (const tier of Object.values(GemTier)) {
+      const name = `${gemTierNames[tier]} — ${gemFamilyNames[family]}`;
+      await prisma.gemDefinition.upsert({
+        where: { family_tier: { family, tier } },
+        create: { family, tier, name, minLevel: gemTierMinLevels[tier] },
+        update: { name, minLevel: gemTierMinLevels[tier] },
+      });
+    }
   }
 
   await seedBots();

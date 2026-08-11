@@ -61,6 +61,9 @@ describe('PropertiesService', () => {
       propertyUpgrade: {
         create: jest.fn(),
       },
+      tavernQuestRun: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       character: { update: jest.fn() },
       transaction: { create: jest.fn() },
       $transaction: jest.fn(),
@@ -108,18 +111,20 @@ describe('PropertiesService', () => {
 
       expect(prisma.character.update).toHaveBeenCalledWith({
         where: { id: character.id },
-        data: { gold: 4850n },
+        data: { gold: 4000n },
       });
       expect(prisma.transaction.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             type: 'PROPERTY_PURCHASE',
-            amount: -150n,
-            balanceAfter: 4850n,
+            amount: -1000n,
+            balanceAfter: 4000n,
           }),
         }),
       );
       expect(result.name).toBe('Villa');
+      expect(result.restoration.cooldownMinutes).toBe(30);
+      expect(result.nextLevelBenefits?.restorationCooldownMinutes).toBe(28);
     });
   });
 
@@ -138,14 +143,14 @@ describe('PropertiesService', () => {
 
       expect(prisma.character.update).toHaveBeenCalledWith({
         where: { id: character.id },
-        data: { gold: 4700n },
+        data: { gold: 3500n },
       });
       expect(prisma.propertyUpgrade.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             fromLevel: 1,
             toLevel: 2,
-            goldCost: 300,
+            goldCost: 1500,
           }),
         }),
       );
@@ -201,6 +206,36 @@ describe('PropertiesService', () => {
       expect(result.collectableIncome).toBe(0);
 
       jest.useRealTimers();
+    });
+  });
+
+  describe('restoreHealth', () => {
+    it('nie pozwala odnowić zdrowia podczas zlecenia z Karczmy', async () => {
+      prisma.tavernQuestRun.findFirst.mockResolvedValueOnce({ id: 'quest-1' });
+
+      await expect(service.restoreHealth('user-1')).rejects.toThrow(ConflictException);
+      expect(prisma.property.update).not.toHaveBeenCalled();
+      expect(prisma.character.update).not.toHaveBeenCalled();
+    });
+
+    it('odnawia zdrowie bohatera do pelnej wartosci', async () => {
+      const woundedCharacter = { ...character, currentHp: 10, healthUpdatedAt: new Date() };
+      charactersService.getByUserId.mockResolvedValueOnce(woundedCharacter);
+      prisma.property.findUnique.mockResolvedValueOnce({ ...property, lastRestoredAt: null });
+      prisma.property.update.mockResolvedValueOnce({
+        ...property,
+        lastRestoredAt: new Date(),
+        upgrades: [],
+      });
+
+      const result = await service.restoreHealth('user-1');
+
+      expect(result.health.current).toBe(result.health.max);
+      expect(result.restoration.healPercent).toBe(100);
+      expect(prisma.character.update).toHaveBeenCalledWith({
+        where: { id: character.id },
+        data: expect.objectContaining({ currentHp: result.health.max }),
+      });
     });
   });
 });

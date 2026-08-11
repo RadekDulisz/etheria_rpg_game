@@ -1,4 +1,9 @@
 import type { Item } from '../../types/game';
+import {
+  formatSignedPercent,
+  itemCritPercent,
+  itemParryPercent,
+} from '../../lib/combat-display';
 
 interface ItemStatsProps {
   item: Item;
@@ -16,8 +21,12 @@ export function ItemStats({ item, compact = false }: ItemStatsProps) {
   if (item.enduranceBonus !== 0) stats.push(['Wytrzymałość', signed(item.enduranceBonus)]);
   if (item.intelligenceBonus !== 0) stats.push(['Inteligencja', signed(item.intelligenceBonus)]);
   if (item.maxHpBonus !== 0) stats.push(['Punkty życia', `${signed(item.maxHpBonus)} HP`]);
-  if (item.parryBonus !== 0) stats.push(['Parowanie', signed(item.parryBonus)]);
-  if (item.criticalChanceBonus !== 0) stats.push(['Trafienie krytyczne', `${signed(item.criticalChanceBonus)}%`]);
+  if (item.parryBonus !== 0) {
+    stats.push(['Parowanie', formatSignedPercent(itemParryPercent(item.parryBonus))]);
+  }
+  if (item.criticalChanceBonus !== 0) {
+    stats.push(['Trafienie krytyczne', formatSignedPercent(itemCritPercent(item.criticalChanceBonus))]);
+  }
 
   return (
     <dl className={`item-stats ${compact ? 'item-stats-compact' : ''}`}>

@@ -16,6 +16,10 @@ import { RedisModule } from './redis/redis.module';
 import { ShopModule } from './shop/shop.module';
 import { UsersModule } from './users/users.module';
 import { MissionsModule } from './missions/missions.module';
+import { BlacksmithModule } from './blacksmith/blacksmith.module';
+import { TestToolsModule } from './test-tools/test-tools.module';
+import { JewelerModule } from './jeweler/jeweler.module';
+import { TavernModule } from './tavern/tavern.module';
 
 @Module({
   imports: [
@@ -37,6 +41,10 @@ import { MissionsModule } from './missions/missions.module';
     BattlesModule,
     HealthModule,
     MissionsModule,
+    BlacksmithModule,
+    JewelerModule,
+    TavernModule,
+    TestToolsModule,
   ],
   providers: [
     {

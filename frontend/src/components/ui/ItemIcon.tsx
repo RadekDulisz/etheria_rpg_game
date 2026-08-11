@@ -11,6 +11,10 @@ export function ItemIcon({ item, className = '' }: { item: Item; className?: str
     const relic = item.iconUrl.slice('relic:'.length);
     return <span className={`item-icon item-icon-relic item-icon-relic-${relic} ${className}`} />;
   }
+  if (item.iconUrl?.startsWith('story-relic:')) {
+    const relic = item.iconUrl.slice('story-relic:'.length);
+    return <span className={`item-icon item-icon-story-relic item-icon-story-relic-${relic} ${className}`} />;
+  }
   if (item.iconUrl) {
     return <img className={`item-icon-image ${className}`} src={item.iconUrl} alt="" />;
   }

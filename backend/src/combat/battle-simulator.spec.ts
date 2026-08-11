@@ -18,6 +18,11 @@ function snapshot(id: string, overrides: Partial<CombatSnapshot> = {}): CombatSn
 }
 
 describe('simulateBattle', () => {
+  it('can continue a journey battle from explicitly provided health', () => {
+    const result = simulateBattle(snapshot('a'), 5, snapshot('b'), 5, () => 0.5, { attacker: 7, defender: 9 });
+    expect(result.rounds[0].actorHpAfter).toBe(7);
+    expect(result.rounds[0].targetHpAfter).toBeLessThanOrEqual(9);
+  });
   it('znacznie silniejszy atakujacy wygrywa (deterministyczny RNG - zawsze trafienie, brak parowania/krytyka)', () => {
     // rng zawsze zwraca 0.4: < kazda hitChance (>=0.5 przy rownej zrecznosci
     // lub wiecej), ale >= typowych progow parry/crit - czyste trafienia.
@@ -74,4 +79,52 @@ describe('simulateBattle', () => {
       expect(round.targetHpAfter).toBeGreaterThanOrEqual(0);
     }
   });
+
+  it('wiekszosc wyrownanych walk konczy sie przed limitem 20 rund', () => {
+    const representativeFighter = {
+      strength: 22,
+      agility: 12,
+      endurance: 22,
+      intelligence: 6,
+      attackPower: 5,
+      damageMin: 4,
+      damageMax: 6,
+      defensePower: 17,
+      parryRating: 14,
+      maxHpBonus: 40,
+      criticalChanceBonus: 9,
+      weaponExpertiseLevel: 13,
+      weaponType: 'SWORD' as const,
+    };
+    const roundCounts: number[] = [];
+
+    for (let seed = 1; seed <= 300; seed += 1) {
+      const result = simulateBattle(
+        snapshot('attacker', representativeFighter),
+        8,
+        snapshot('defender', representativeFighter),
+        8,
+        seededRng(seed),
+      );
+      roundCounts.push(result.rounds[result.rounds.length - 1].roundNumber);
+    }
+
+    const completedBeforeLimit = roundCounts.filter((round) => round < 20).length;
+    const averageRounds =
+      roundCounts.reduce((total, round) => total + round, 0) / roundCounts.length;
+
+    expect(completedBeforeLimit / roundCounts.length).toBeGreaterThanOrEqual(0.75);
+    expect(averageRounds).toBeLessThan(18);
+  });
 });
+
+function seededRng(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}

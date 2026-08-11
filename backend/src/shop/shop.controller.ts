@@ -17,6 +17,16 @@ export class ShopController {
     return this.shopService.getTodayOffers(user.sub);
   }
 
+  @Get('refresh/status')
+  getRefreshStatus(@CurrentUser() user: JwtPayload) {
+    return this.shopService.getRefreshStatus(user.sub);
+  }
+
+  @Post('refresh')
+  refreshMarket(@CurrentUser() user: JwtPayload) {
+    return this.shopService.refreshMarket(user.sub);
+  }
+
   @Get('catalog')
   getCatalog(@CurrentUser() user: JwtPayload, @Query() query: CatalogQueryDto) {
     return this.shopService.getCatalog(user.sub, query);

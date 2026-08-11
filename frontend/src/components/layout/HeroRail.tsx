@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Character, EquippedEntry } from '../../types/game';
 import { allocateStatPoint, type AllocatableStat } from '../../api/character.api';
@@ -11,6 +11,7 @@ import { statTooltips } from '../../lib/stat-tooltips';
 import { getEquipmentAttributeBonuses } from '../../lib/equipment-bonuses';
 import { AdjustedStatValue } from '../ui/AdjustedStatValue';
 import { getApiErrorMessage } from '../../lib/api-errors';
+import { WeaponExpertiseProgress } from '../ui/WeaponExpertiseProgress';
 
 interface HeroRailProps {
   character: Character;
@@ -19,13 +20,19 @@ interface HeroRailProps {
 
 export function HeroRail({ character, equipment }: HeroRailProps) {
   const queryClient = useQueryClient();
+  const refreshRegeneratedHealth = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['character', 'me'] });
+  }, [queryClient]);
   const appearance = getChestAppearance(equipment);
   const equipmentBonuses = getEquipmentAttributeBonuses(equipment);
   const allocateMutation = useMutation({
     mutationFn: allocateStatPoint,
     onSuccess: async (updatedCharacter) => {
       queryClient.setQueryData(['character', 'me'], updatedCharacter);
-      await queryClient.invalidateQueries({ queryKey: ['missions'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['missions'] }),
+        queryClient.invalidateQueries({ queryKey: ['arena', 'opponent'] }),
+      ]);
     },
   });
   const heroStats: Array<{ label: string; value: ReactNode; mark: string; tooltip: string; allocation?: AllocatableStat }> = [
@@ -33,14 +40,14 @@ export function HeroRail({ character, equipment }: HeroRailProps) {
     { label: 'Zręczność', value: <AdjustedStatValue value={character.stats?.agility ?? '—'} equipmentBonus={equipmentBonuses.agility} />, mark: 'DEX', tooltip: statTooltips.agility, allocation: 'agility' },
     { label: 'Wytrzymałość', value: <AdjustedStatValue value={character.stats?.endurance ?? '—'} equipmentBonus={equipmentBonuses.endurance} />, mark: 'CON', tooltip: statTooltips.endurance, allocation: 'endurance' },
     { label: 'Inteligencja', value: <AdjustedStatValue value={character.stats?.intelligence ?? '—'} equipmentBonus={equipmentBonuses.intelligence} />, mark: 'INT', tooltip: statTooltips.intelligence, allocation: 'intelligence' },
-    { label: 'Atak', value: character.stats?.attackPower ?? '—', mark: 'ATK', tooltip: statTooltips.attack },
+    { label: 'Atak', value: character.stats ? `${character.stats.attackMin}–${character.stats.attackMax}` : '—', mark: 'ATK', tooltip: statTooltips.attack },
     { label: 'Obrona', value: character.stats?.defensePower ?? '—', mark: 'DEF', tooltip: statTooltips.defense },
     { label: 'Trafienie krytyczne', value: character.stats ? `${character.stats.criticalChance}%` : '—', mark: 'CRIT', tooltip: statTooltips.critical },
     { label: 'Parowanie', value: character.stats ? `${character.stats.parryChance}%` : '—', mark: 'PARRY', tooltip: statTooltips.parry },
     { label: 'Punkty nauki', value: character.stats?.unspentPoints ?? '—', mark: 'PTS', tooltip: statTooltips.points },
   ];
   return (
-    <aside className="hero-rail">
+    <aside className={`hero-rail arena-profile-frame-${character.arenaRank?.frame ?? 'ash'}`}>
       <div className="hero-portrait-frame">
         <span className="ornament-corner ornament-corner-tl" />
         <span className="ornament-corner ornament-corner-tr" />
@@ -58,7 +65,16 @@ export function HeroRail({ character, equipment }: HeroRailProps) {
       <div className="px-4 pb-4 text-center">
         <p className="text-2xl text-amber-100 fantasy-title">{character.name}</p>
         <p className="mt-1 text-[0.62rem] uppercase tracking-[0.2em]" style={{ color: character.reputationRankColor }}>{character.reputationRank}</p>
-        <HealthBar value={character.currentHp} max={character.maxHp} className="mt-3" />
+        <p className="hero-arena-title" style={{ color: character.arenaRank?.color ?? '#8c8982' }}>
+          {character.arenaRank?.title ?? 'Nowicjusz Areny'} · <span className="game-number">{character.arenaRating ?? 1000}</span>
+        </p>
+        <HealthBar
+          value={character.currentHp}
+          max={character.maxHp}
+          regeneration={character.healthRegeneration}
+          onRegenerationDue={refreshRegeneratedHealth}
+          className="mt-3"
+        />
       </div>
 
       <dl className="border-y border-amber-700/25 px-4 py-2 text-xs">
@@ -68,7 +84,15 @@ export function HeroRail({ character, equipment }: HeroRailProps) {
 
       <div className="space-y-4 border-b border-amber-700/25 px-4 py-4">
         <ExperienceProgress current={character.experience} required={character.experienceToNextLevel} />
-        <ReputationMeter value={character.reputation} rank={character.reputationRank} rankColor={character.reputationRankColor} />
+        <ReputationMeter value={character.reputation} rank={character.reputationRank} rankColor={character.reputationRankColor} showRank={false} />
+        {character.activeWeaponExpertise ? (
+          <WeaponExpertiseProgress expertise={character.activeWeaponExpertise} compact />
+        ) : (
+          <div className="weapon-expertise-empty">
+            <span>Biegłość broni</span>
+            <p>Załóż broń, aby rozwijać jej biegłość.</p>
+          </div>
+        )}
       </div>
 
       <dl className="hero-stat-list">

@@ -4,6 +4,7 @@ import { fightTavernEncounter } from '../../api/tavern.api';
 import { getApiErrorMessage } from '../../lib/api-errors';
 import type { ArenaOpponent, Character, TavernQuestCombatStage, TavernQuestRun } from '../../types/game';
 import { ArenaSequence, type CombatSequenceResult } from './ArenaSequence';
+import { tavernEnemyArt, tavernQuestArt } from './tavern-art';
 
 interface TavernEncounterProps {
   quest: TavernQuestRun;
@@ -12,12 +13,6 @@ interface TavernEncounterProps {
   chronicleTrail?: ReactNode;
   travelState?: ReactNode;
 }
-
-const QUEST_ART = {
-  EASY: '/assets/missions/mission-tier-2.jpg',
-  MEDIUM: '/assets/missions/mission-tier-3.jpg',
-  HARD: '/assets/missions/mission-tier-5.jpg',
-} as const;
 
 const CHALLENGE = {
   EASY: 'KORZYSTNY',
@@ -39,6 +34,7 @@ export function TavernEncounter({ quest, stage, onAdvance, chronicleTrail, trave
   const encounter = resolvedQuest?.encounters[resolvedQuest.encounters.length - 1] ?? null;
   const atlasPosition = stage.enemy.atlasPosition;
   const portraitPosition = `${(atlasPosition % 3) * 50}% ${Math.floor(atlasPosition / 3) * 50}%`;
+  const enemyArt = encounter ? tavernEnemyArt(encounter.enemyKey, encounter.enemyIllustrationUrl) : null;
   const enemySignature = stage.enemy.signature;
   const questDecisions = quest.decisions ?? [];
   const questPuzzles = quest.puzzles ?? [];
@@ -85,7 +81,7 @@ export function TavernEncounter({ quest, stage, onAdvance, chronicleTrail, trave
       onComplete={() => onAdvance(resolvedQuest)}
       presentation={{
         ariaLabel: `Starcie podczas zlecenia: ${stage.title}`,
-        backgroundSrc: QUEST_ART[quest.difficulty],
+        backgroundSrc: tavernQuestArt(quest.templateKey, quest.difficulty),
         header: `${quest.title} · ${quest.region}`,
         resultHeader: 'Rozstrzygnięcie na szlaku',
         waitingKicker: stage.finalEncounter ? 'Ostatnia przeszkoda staje na drodze bohatera' : 'Cień przecina drogę bohatera',
@@ -95,7 +91,10 @@ export function TavernEncounter({ quest, stage, onAdvance, chronicleTrail, trave
         resultKicker: encounter.won ? 'Droga przez Etherię stoi otworem' : 'Kronika zapisuje cenę porażki',
         returnLabel: resolvedQuest.status === 'RESOLVED' ? 'Poznaj rozstrzygnięcie' : 'Ruszaj dalej',
         controlsLabel: 'Przebieg starcia jest odtwarzany z kroniki wyprawy',
-        opponentPortrait: { src: encounter.enemyIllustrationUrl, atlasPosition: portraitPosition },
+        opponentPortrait: enemyArt ? {
+          src: enemyArt.src,
+          ...(enemyArt.individual ? {} : { atlasPosition: portraitPosition }),
+        } : undefined,
         showRewards: false,
         resultButtonDelayMs: 900,
       }}

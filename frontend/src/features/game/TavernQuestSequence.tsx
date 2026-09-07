@@ -13,6 +13,7 @@ import { TavernPuzzle } from './TavernPuzzle';
 import { getApiErrorMessage } from '../../lib/api-errors';
 import type { Character, TavernOverview, TavernQuestAttribute, TavernQuestChoice, TavernQuestClaim, TavernQuestRun } from '../../types/game';
 import type { TavernProvisionType } from '../../types/game';
+import { tavernQuestArt } from './tavern-art';
 
 interface TavernQuestSequenceProps {
   quest: TavernQuestRun;
@@ -20,7 +21,6 @@ interface TavernQuestSequenceProps {
 }
 
 const DIFFICULTY_LABEL = { EASY: 'Zlecenie łatwe', MEDIUM: 'Zlecenie średnie', HARD: 'Zlecenie trudne' } as const;
-const QUEST_ART = { EASY: '/assets/missions/mission-tier-2.jpg', MEDIUM: '/assets/missions/mission-tier-3.jpg', HARD: '/assets/missions/mission-tier-5.jpg' } as const;
 
 interface AttributeRollState {
   attribute: TavernQuestAttribute;
@@ -183,7 +183,7 @@ export function TavernQuestSequence({ quest, onClose }: TavernQuestSequenceProps
 
   return createPortal(
     <div className={`tavern-quest-sequence tavern-quest-${quest.difficulty.toLowerCase()} ${resolved ? `is-resolved is-${won ? 'success' : 'failure'}` : ''}`} role="dialog" aria-modal="true" aria-label={`Zlecenie: ${quest.title}`}>
-      <img className="tavern-quest-art" src={QUEST_ART[quest.difficulty]} alt="" />
+      <img className="tavern-quest-art" src={tavernQuestArt(quest.templateKey, quest.difficulty)} alt="" />
       <div className="tavern-quest-shade" />
       <header className="tavern-quest-header"><BrandLogo /><span>{DIFFICULTY_LABEL[quest.difficulty]} · {quest.region}</span></header>
 
@@ -405,7 +405,10 @@ function TavernDie3D({ rolling, value }: { rolling: boolean; value?: number }) {
         gradient.addColorStop(0.52, `rgb(${Math.round(20 + light * 20)},${Math.round(18 + light * 16)},${Math.round(16 + light * 12)})`);
         gradient.addColorStop(1, 'rgb(5, 8, 10)');
         context.beginPath();
-        polygon.forEach((point, pointIndex) => pointIndex === 0 ? context.moveTo(point.x, point.y) : context.lineTo(point.x, point.y));
+        polygon.forEach((point, pointIndex) => {
+          if (pointIndex === 0) context.moveTo(point.x, point.y);
+          else context.lineTo(point.x, point.y);
+        });
         context.closePath();
         context.fillStyle = gradient;
         context.fill();
@@ -415,7 +418,8 @@ function TavernDie3D({ rolling, value }: { rolling: boolean; value?: number }) {
         context.beginPath();
         polygon.forEach((point, pointIndex) => {
           const inset = { x: center.x + (point.x - center.x) * 0.82, y: center.y + (point.y - center.y) * 0.82 };
-          pointIndex === 0 ? context.moveTo(inset.x, inset.y) : context.lineTo(inset.x, inset.y);
+          if (pointIndex === 0) context.moveTo(inset.x, inset.y);
+          else context.lineTo(inset.x, inset.y);
         });
         context.closePath();
         context.strokeStyle = `rgba(238, 195, 115, ${0.14 + light * 0.22})`;

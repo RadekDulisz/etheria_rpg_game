@@ -59,4 +59,38 @@ describe('tavern quest stages', () => {
     expect(tavernChoiceTarget('MEDIUM', 2, 0)).toBe(12);
     expect(tavernChoiceTarget('HARD', 4, 1)).toBe(16);
   });
+
+  it('builds a fully authored route through the old mill', () => {
+    const millQuest = {
+      templateKey: 'mill-below-walls',
+      title: 'Cisza pod starym młynem',
+      region: 'Przedmieścia Etherii',
+      summary: 'Koło młyna obraca się mimo przerwanych dostaw.',
+      difficulty: 'EASY' as const,
+      stageIndex: 0,
+      stageCount: 3,
+      score: 0,
+    };
+    const opening = getTavernStage(millQuest);
+    expect(opening?.type).toBe('CHOICE');
+    if (opening?.type !== 'CHOICE') throw new Error('Expected authored mill opening');
+    expect(opening.title).toBe('Mąka, której nikt nie odbiera');
+    expect(opening.choices.map((choice) => choice.id)).toEqual(['read-erased-mill-ledger', 'hunt-flour-smugglers']);
+
+    const puzzle = getTavernStage({
+      ...millQuest,
+      stageIndex: 1,
+      decisions: [{ choiceId: 'read-erased-mill-ledger', alignment: 'GOOD' as const }],
+    });
+    expect(puzzle?.type).toBe('PUZZLE');
+    if (puzzle?.type !== 'PUZZLE') throw new Error('Expected mill puzzle');
+    expect(puzzle.puzzleKey).toBe('mill-gears');
+    expect(puzzle.narrative).toContain('awaryjnym spichlerzem');
+
+    const finale = getTavernStage({ ...millQuest, stageIndex: 2 });
+    expect(finale?.type).toBe('COMBAT');
+    if (finale?.type !== 'COMBAT') throw new Error('Expected mill combat finale');
+    expect(finale.enemy.key).toBe('mill-ghoul');
+    expect(finale.finalEncounter).toBe(true);
+  });
 });

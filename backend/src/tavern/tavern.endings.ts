@@ -15,9 +15,9 @@ const ENDINGS: Record<string, EndingLore> = {
     failure: ['Ostatnia warta Caeda', 'Sfora przełamuje krąg latarni. Caed zostaje na Równinach, by dać mieszkańcom czas na ucieczkę, a bohater przynosi Borwinowi kryształ ciepły od cudzego ostatniego rozkazu.'],
   },
   'mill-below-walls': {
-    insight: ['Mąka i popiół', 'Ślady pod żarnami prowadzą do komory przemytników. Zamiast burzyć młyn, bohater zamyka ich drogę i przywraca dostawy dla miasta.'],
-    pursuit: ['Koło zatrzymane ostrzem', 'Po krótkim pościgu przez piwnice ostatni z napastników wpada między łopaty mechanizmu. Nad ranem koło młyna wreszcie nieruchomieje.'],
-    failure: ['Młyn miele po północy', 'Podziemne przejście zapada się za uciekającymi. Młyn nadal pracuje nocą, choć od dawna nikt nie wsypuje do niego ziarna.'],
+    insight: ['Imiona spod mąki', 'Po upadku Grumara bohater otwiera zamurowany rejestr nocnej zmiany. Dostawy wracają do Etherii, lecz na każdym worku zapisano nazwiska rodzin, które dawne władze skazały na głód i zapomnienie.'],
+    pursuit: ['Koło zatrzymane ostrzem', 'Ostatni cios rozrywa łańcuch przemytników i zatrzymuje pradawny napęd. O świcie straż odnajduje skradzione ziarno, lecz prawda o tym, dlaczego Grumar pozostał przy kole, ginie razem z jego Echem.'],
+    failure: ['Nocna zmiana trwa', 'Grumar odzyskuje korbę, a dolne wrota zamykają się za bohaterem. Młyn nadal pracuje po północy i miele puste żarna dla ludzi, których imiona ponownie zniknęły z ksiąg Etherii.'],
   },
   'vael-courier': {
     insight: ['List do umarłej', 'Pieczęć skrywa nie imię adresatki, lecz drogę do jej grobu. Bohater oddaje list mokradłom, a posłaniec po raz pierwszy odzyskuje własne wspomnienia.'],
@@ -29,10 +29,10 @@ const ENDINGS: Record<string, EndingLore> = {
     pursuit: ['Milczenie zachowane przez Zakon', 'Kryształ zostaje oczyszczony i pieczęć Iglicy stabilizuje rozlewiska. Głosy świadków milkną razem ze Strażnikiem, a Mira wie, że prawdy nie da się już odzyskać.'],
     failure: ['Biała iglica zamyka oczy', 'Strażnik odzyskuje kryształ i zatapia wejście do sanktuarium. Ostatnim dźwiękiem ekspedycji jest dzwon wyznaczający godzinę obrzędu sprzed stu osiemdziesięciu siedmiu lat.'],
   },
-  'white-moth-hunter': {
-    insight: ['Prawda pod białym skrzydłem', 'Relikt okazuje się kluczem do ostrzeżenia pozostawionego przez dawnych badaczy. Uciekinier zostaje oczyszczony z zarzutów, lecz Bractwo nie zapomina zniewagi.'],
-    pursuit: ['Łowca staje się zwierzyną', 'Najemnicy zostają dopadnięci w przełęczy, zanim uciszą badacza. Ich dowódca oddaje relikt i nazwiska tych, którzy zapłacili za pościg.'],
-    failure: ['Ćma gaśnie w dłoni', 'Relikt pęka podczas starcia. Badacz znika w turniach, a jedynym dowodem jego historii pozostaje biały pył na rękawicy bohatera.'],
+  'ashen-phoenix-order': {
+    insight: ['Imiona wydobyte z popiołu', 'Serce Pierwszego Stosu oddaje głosy skrybów spalonych nie przez Pęknięcie, lecz na rozkaz Avarrenów. Archiwista zostaje oczyszczony z zarzutów, a Zakon po raz pierwszy musi zaprzeczać słowom własnych męczenników.'],
+    pursuit: ['Tropiciel odwraca ostrze', 'Varek poznaje nazwiska zapisane w relikwiarzu i przepuszcza archiwistę przez przełęcz. Wraca do Zakonu z pustymi rękami oraz pytaniem, czy przysięga zbudowana na cudzym popiele nadal go obowiązuje.'],
+    failure: ['Ostatni żar Pierwszego Stosu', 'Morvath odzyskuje relikwiarz i zamyka go we własnej piersi. Archiwista ginie bez świadectwa, a nad turniami płonie stos, którego dym układa się w imiona wykreślone z kronik.'],
   },
   'raven-tithe': {
     insight: ['Danina bez krwi', 'Stare znaki dowodzą, że przysięga osady została sfałszowana. Bohater łamie jej moc bez ofiary, a kruki po raz pierwszy odlatują z pustymi dziobami.'],
@@ -83,6 +83,7 @@ export function resolveTavernEnding(input: {
   const choices = input.choiceIds ?? (input.firstChoiceId ? [input.firstChoiceId] : []);
   const insightChoices: Record<string, string> = {
     'ash-road-lantern': 'leave-crystal-with-refugees',
+    'mill-below-walls': 'read-erased-mill-ledger',
     'stone-bridge-voices': 'preserve-vael-memory',
     'bone-chimera-heart': 'guide-golem-to-lantern',
   };

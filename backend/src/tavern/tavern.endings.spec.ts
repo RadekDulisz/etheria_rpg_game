@@ -24,6 +24,7 @@ describe('resolveTavernEnding', () => {
     expect(new Set(relicNames).size).toBe(TAVERN_QUEST_TEMPLATES.length);
     const authoredChoices: Record<string, [string, string]> = {
       'ash-road-lantern': ['leave-crystal-with-refugees', 'reclaim-crystal-for-garrison'],
+      'mill-below-walls': ['read-erased-mill-ledger', 'hunt-flour-smugglers'],
       'stone-bridge-voices': ['preserve-vael-memory', 'yield-memory-to-order'],
       'bone-chimera-heart': ['guide-golem-to-lantern', 'shatter-lantern-core'],
     };
@@ -35,5 +36,15 @@ describe('resolveTavernEnding', () => {
       const failure = resolveTavernEnding({ ...story, result: 'FAILURE', score: 0 });
       expect(new Set([insight.title, pursuit.title, failure.title]).size).toBe(3);
     }
+  });
+
+  it('uses the old mill investigation route to select its ending', () => {
+    const mill = { templateKey: 'mill-below-walls', title: 'Cisza pod starym młynem', region: 'Przedmieścia Etherii' };
+    const truth = resolveTavernEnding({ ...mill, result: 'SUCCESS', score: 4, choiceIds: ['read-erased-mill-ledger'] });
+    const pursuit = resolveTavernEnding({ ...mill, result: 'SUCCESS', score: 4, choiceIds: ['hunt-flour-smugglers'] });
+    expect(truth.kind).toBe('INSIGHT');
+    expect(truth.title).toBe('Imiona spod mąki');
+    expect(pursuit.kind).toBe('PURSUIT');
+    expect(pursuit.title).toBe('Koło zatrzymane ostrzem');
   });
 });

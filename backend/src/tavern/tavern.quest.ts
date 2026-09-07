@@ -158,6 +158,21 @@ const AUTHORED_CHOICE_STAGES: Record<string, Record<number, ChoiceStageFactory>>
       ],
     }),
   },
+  'mill-below-walls': {
+    0: (run, atmosphere) => ({
+      type: 'CHOICE', index: 0, kicker: 'Przedmieścia Etherii · nocna zmiana',
+      title: 'Mąka, której nikt nie odbiera',
+      narrative: `${run.summary} ${atmosphere} Wrota nie noszą śladów włamania. Przed progiem leżą pełne worki, lecz na każdym skreślono znak miejskiego spichlerza. Z piwnicy dobiega rytm korby obracanej dłońmi, które nie potrzebują odpoczynku.`,
+      choices: [
+        choice('read-erased-mill-ledger', 'Odczytaj wymazany rejestr', 'Zetrzyj świeżą mąkę z księgi dostaw i sprawdź, czyje nazwiska próbowano ukryć.', 'GOOD', 'INT', -1, 1,
+          'Pod warstwą pyłu wracają nazwiska rodzin zamkniętych pod młynem podczas dawnego głodu. Ostatni podpis należy do mistrza Grumara.',
+          'Wilgotna mąka zrywa atrament razem z papierem. Pozostaje tylko pieczęć urzędnika, który nakazał zamknąć dolne komory.'),
+        choice('hunt-flour-smugglers', 'Rusz za śladami przemytników', 'Omiń księgi i zejdź po świeżych odciskach butów, zanim złodzieje opróżnią podziemny skład.', 'NEUTRAL', 'DEX', 1, 0,
+          'Biały trop prowadzi do rozbitej kraty. Przemytnicy uciekli, pozostawiając korbę spiętą łańcuchem z pradawnym mechanizmem.',
+          'Ślady rozdzielają się między workami. Gdy bohater odnajduje zejście, przemytnicy zdążyli już obudzić nocną zmianę Grumara.'),
+      ],
+    }),
+  },
   'stone-bridge-voices': {
     0: (run, atmosphere) => ({
       type: 'CHOICE', index: 0, kicker: 'Srebrne Rozlewiska · ślad ekspedycji',
@@ -183,6 +198,21 @@ const AUTHORED_CHOICE_STAGES: Record<string, Record<number, ChoiceStageFactory>>
         choice('yield-memory-to-order', 'Oddaj zapis Zakonowi', 'Stabilność grobli i pieczęci jest ważniejsza niż prawda, która może wywołać wojnę.', 'NEUTRAL', 'INT', -1, 0,
           'Srebrna formuła oczyszcza najbardziej gwałtowne Echo i osłabia obronę komnaty.',
           'Brakuje jednej strofy formuły. Oczyszczanie zaciera imiona, ale nie uspokaja Strażnika.'),
+      ],
+    }),
+  },
+  'ashen-phoenix-order': {
+    0: (run, atmosphere) => ({
+      type: 'CHOICE', index: 0, kicker: 'Krucze Turnie · spalone archiwum',
+      title: 'Ślady, których ogień nie zabrał',
+      narrative: `${run.summary} ${atmosphere} W ruinach skryptorium leżą dwa tropy: odciski wojskowych butów prowadzące ku przełęczy oraz nadpalony rejestr, z którego ktoś próbował usunąć trzynaście imion.`,
+      choices: [
+        choice('read-ashen-register', 'Odczytaj popielny rejestr', 'Zabezpiecz kruche strony i ustal, kogo Zakon przeznaczył do Pierwszego Stosu.', 'GOOD', 'INT', -1, 2,
+          'Atrament wraca pod wpływem aeterytu. Trzynaście nazwisk należy do skrybów oficjalnie uznanych za poległych podczas Pęknięcia.',
+          'Gorący popiół skleja strony. Udaje się ocalić tylko znak Avarrenów oraz datę późniejszą niż Pęknięcie.'),
+        choice('pursue-phoenix-hunter', 'Rusz za Popielnym Tropicielem', 'Dogonienie Vareka może ocalić archiwistę, zanim Zakon zamknie wszystkie drogi przez turnie.', 'NEUTRAL', 'DEX', 1, 0,
+          'Bohater wyprzedza straż Zakonu i dostrzega sygnały Vareka pozostawione na osmalonych kamieniach.',
+          'Fałszywy trop prowadzi przez urwisko. Varek zyskuje czas, by przygotować zasadzkę przy relikwiarzu.'),
       ],
     }),
   },
@@ -236,8 +266,12 @@ function branchPrelude(run: QuestIdentity): string {
   const authoredPrelude: Record<string, string> = {
     'read-caeds-orders': 'Skreślony rozkaz potwierdza, że garnizon świadomie pozostawił osadę poza ochroną Latarni.',
     'follow-caeds-march': 'Ślady Caeda prowadzą ku ludziom, których nie obejmuje żadna mapa ani wojskowy rejestr.',
+    'read-erased-mill-ledger': 'Odzyskany rejestr ujawnia, że młyn był awaryjnym spichlerzem, a Grumar pozostał przy kole, gdy urzędnicy zamurowali robotników razem z głodującymi rodzinami.',
+    'hunt-flour-smugglers': 'Ślady przemytników prowadzą do korby, którą spięto z mechanizmem dawnego spichlerza. Złodzieje zabrali ziarno, lecz zostawili obudzoną nocną zmianę.',
     'study-vael-camp': 'Znaki przewoźników ujawniają, że Strażnik wybierał ofiary według dawnego rozkazu, nie przypadku.',
     'enter-through-flooded-nave': 'Zalana nawa pozwala wejść przed przypływem, ale omija świadectwa pozostawione przez ekspedycję.',
+    'read-ashen-register': 'Ocalony rejestr dowodzi, że Pierwszy Stos był egzekucją skrybów, a nie próbą ratowania ofiar Pęknięcia.',
+    'pursue-phoenix-hunter': 'Sygnały Vareka prowadzą krótszą drogą ku relikwiarzowi, lecz Zakon wie już, że bohater depcze mu po piętach.',
     'decode-golem-route': 'Odczytana procesja prowadzi do węzła pod Etherią, a nie ku jej bramie.',
     'intercept-golem-column': 'Skrót przez ossuarium daje przewagę czasu, lecz budzi straż przeznaczoną dla intruzów.',
   };

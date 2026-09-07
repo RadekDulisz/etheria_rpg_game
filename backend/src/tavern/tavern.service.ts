@@ -37,6 +37,25 @@ const RUN_INCLUDE = {
 } as const;
 const DIFFICULTY_ORDER = { EASY: 0, MEDIUM: 1, HARD: 2 } as const;
 const BASE_SUCCESS_CHANCE = { EASY: 0.78, MEDIUM: 0.65, HARD: 0.52 } as const;
+const TAVERN_ENEMY_ART: Partial<Record<string, string>> = {
+  'ash-pack-memory': '/assets/tavern/enemies/ash-pack-memory-v2.png',
+  'mill-ghoul': '/assets/tavern/enemies/mill-ghoul-v2.png',
+  'marsh-wisp': '/assets/tavern/enemies/marsh-wisp-v4.png',
+  'vael-drowned-knight': '/assets/tavern/enemies/vael-drowned-knight.png',
+  'vael-spire-warden': '/assets/tavern/enemies/vael-spire-warden-v2.png',
+  'phoenix-hunter': '/assets/tavern/enemies/phoenix-hunter-v2.png',
+  'phoenix-revenant': '/assets/tavern/enemies/phoenix-revenant-v2.png',
+  'raven-harpy': '/assets/tavern/enemies/raven-harpy.png',
+  'raven-matriarch': '/assets/tavern/enemies/raven-matriarch.png',
+  'bell-drowned': '/assets/tavern/enemies/bell-drowned.png',
+  'chapel-warden': '/assets/tavern/enemies/chapel-warden.png',
+  'thirteenth-bell': '/assets/tavern/enemies/thirteenth-bell.png',
+  'necropolis-custodian': '/assets/tavern/enemies/necropolis-custodian.png',
+  'seal-golem': '/assets/tavern/enemies/seal-golem.png',
+  'void-cultist': '/assets/tavern/enemies/void-cultist-v2.png',
+  'fractured-knight': '/assets/tavern/enemies/fractured-knight-v2.png',
+  'asterion-remnant': '/assets/tavern/enemies/asterion-remnant.png',
+};
 
 type QuestRun = Prisma.TavernQuestRunGetPayload<{ include: typeof RUN_INCLUDE }>;
 
@@ -351,7 +370,7 @@ export class TavernService {
           enemyTitle: enemy.title,
           enemyKind: enemy.familyLabel,
           enemyLevel: enemyCombat.level,
-          enemyIllustrationUrl: '/assets/tavern/tavern-bestiary-atlas.png',
+          enemyIllustrationUrl: TAVERN_ENEMY_ART[enemy.key] ?? '/assets/tavern/tavern-bestiary-atlas.png',
           enemyMaxHp: enemyCombat.maxHp,
           playerHpBefore: run.journeyHp,
           playerHpAfter,

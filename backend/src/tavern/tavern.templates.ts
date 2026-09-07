@@ -34,9 +34,9 @@ export const TAVERN_QUEST_TEMPLATES: TavernQuestTemplate[] = [
     encounterSummary: 'Obóz ekspedycji · Topielny Rycerz · rytuał Vael · Avarion, Strażnik Iglicy',
   },
   {
-    key: 'white-moth-hunter', difficulty: 'MEDIUM', title: 'Łowca Białej Ćmy', region: 'Krucze Turnie', stageCount: 4,
-    summary: 'Badacz ruin uciekł z reliktem Bractwa Białej Ćmy. Najemnicy chcą jego głowy, lecz Mira twierdzi, że mężczyzna próbował przed czymś ostrzec Etherię.',
-    encounterSummary: 'Przesłuchanie · próba DEX lub INT · Varek · Morvath, Rycerz Białej Ćmy',
+    key: 'ashen-phoenix-order', difficulty: 'MEDIUM', title: 'Popiół nie zapomina', region: 'Krucze Turnie', stageCount: 4,
+    summary: 'Archiwista Zakonu Popielnego Feniksa uciekł z Sercem Pierwszego Stosu — reliktem przechowującym wspomnienia spalonych skrybów. Zakon ogłosił go zdrajcą, lecz Mira twierdzi, że odkrył, kogo naprawdę złożono w rytuale odrodzenia.',
+    encounterSummary: 'Spalone archiwum · próba DEX lub INT · Varek, Popielny Tropiciel · Morvath, Ostatni Rycerz Feniksa',
   },
   {
     key: 'raven-tithe', difficulty: 'MEDIUM', title: 'Krucza dziesięcina', region: 'Krucze Turnie', stageCount: 4,

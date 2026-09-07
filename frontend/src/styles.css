@@ -889,6 +889,346 @@
 .tavern-puzzle-table > footer button.secondary { border-color: #3d4244; background: #070b0e; color: #85817a; }
 .tavern-puzzle-table > footer button:disabled { opacity: .38; }
 
+/* Ołtarz Vael — mechaniczna minigra trzech pierścieni. */
+.water-rite { margin-top:1.15rem; border:1px solid rgba(90,113,117,.42); background:radial-gradient(circle at 50% 38%,rgba(69,122,132,.16),transparent 42%),linear-gradient(180deg,rgba(10,20,23,.88),rgba(3,8,10,.96)); padding:clamp(1rem,2.4vw,1.7rem); box-shadow:inset 0 0 2.5rem rgba(30,73,79,.12); }
+.water-rite-altar { position:relative; width:clamp(13.5rem,27vw,18rem); aspect-ratio:1; margin:0 auto 1.25rem; border-radius:50%; background:radial-gradient(circle,#0b1619 0 23%,#17272a 24% 27%,#071013 28% 100%); box-shadow:0 0 0 1px #284247,0 0 0 4px #080d0f,0 0 0 5px #786641,inset 0 0 2rem #000,0 1rem 2rem rgba(0,0,0,.5); }
+.water-rite-ring { position:absolute; border:1px solid rgba(155,180,179,.42); border-radius:50%; background:repeating-conic-gradient(from 0deg,rgba(141,164,161,.22) 0 1deg,transparent 1deg 44deg,rgba(92,115,115,.35) 44deg 45deg); rotate:var(--rite-angle); transition:rotate .28s cubic-bezier(.2,.8,.2,1),filter .25s ease; }
+.water-rite-ring::before { position:absolute; inset:.35rem; border:1px solid rgba(126,103,59,.38); border-radius:50%; content:''; }
+.water-rite-ring > i { position:absolute; top:-.36rem; left:50%; width:.72rem; height:.72rem; border:1px solid currentColor; background:currentColor; translate:-50% 0; rotate:45deg; box-shadow:0 0 .75rem currentColor; }
+.water-rite-ring.is-earth { inset:5%; color:#c2a463; }
+.water-rite-ring.is-water { inset:17%; color:#65a9b5; }
+.water-rite-ring.is-memory { inset:29%; color:#b3a2ce; }
+.water-rite-target { position:absolute; z-index:8; top:-1.25rem; left:50%; width:3.4rem; height:2.25rem; translate:-50% 0; background:linear-gradient(180deg,rgba(221,231,221,.82),rgba(118,149,151,.18) 72%,transparent); clip-path:polygon(35% 0,65% 0,100% 100%,0 100%); filter:drop-shadow(0 0 .5rem rgba(180,218,220,.5)); }
+.water-rite-target i { position:absolute; top:.15rem; left:50%; width:1px; height:1.7rem; background:#edf1df; translate:-50% 0; box-shadow:0 0 .45rem #dff; }
+.water-rite-core { position:absolute; z-index:5; inset:38%; display:grid; place-items:center; border:1px solid #687b78; border-radius:50%; background:radial-gradient(circle,#283f43,#081012 67%); box-shadow:inset 0 0 1rem #000,0 0 1rem rgba(93,149,155,.25); }
+.water-rite-core i { position:absolute; width:44%; height:44%; border:1px solid #9aa59e; rotate:45deg; }
+.water-rite-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+.water-rite-controls > div { display:grid; grid-template-columns:2.25rem minmax(0,1fr) 2.25rem; align-items:stretch; border:1px solid #303b3d; background:rgba(3,8,10,.72); transition:border-color .25s ease,box-shadow .25s ease; }
+.water-rite-controls > div.is-aligned { border-color:#7a9f96; box-shadow:inset 0 0 1rem rgba(89,140,130,.13),0 0 .7rem rgba(98,159,147,.12); }
+.water-rite-controls button { border:0; background:rgba(94,76,43,.13); color:#c6a75f; font:400 1.4rem/1 Georgia,serif; cursor:pointer; transition:background .18s ease,color .18s ease; }
+.water-rite-controls button:hover:not(:disabled) { background:rgba(166,119,42,.26); color:#ffe0a0; }
+.water-rite-controls span { display:grid; place-content:center; min-width:0; padding:.6rem .25rem; text-align:center; }
+.water-rite-controls small { color:#6f7774; font:650 .48rem/1.2 'Segoe UI',sans-serif; letter-spacing:.12em; }
+.water-rite-controls strong { margin-top:.2rem; color:#d5cab6; font:400 .88rem/1.2 Georgia,serif; }
+.water-rite-controls span i { margin-top:.22rem; color:#766f63; font:normal 650 .48rem/1 'Segoe UI',sans-serif; letter-spacing:.12em; }
+.water-rite-controls .is-aligned span i { color:#79b698; }
+.water-rite > p { margin:1rem auto 0; color:#8e8a80; font:italic .72rem/1.5 Georgia,serif; text-align:center; }
+.water-rite-submit { display:block; min-width:min(19rem,100%); margin:1rem auto 0; border:1px solid #575043; background:#0b0d0d; padding:.82rem 1rem; color:#77736b; font:650 .64rem/1 'Segoe UI',sans-serif; letter-spacing:.14em; text-transform:uppercase; transition:all .2s ease; }
+.water-rite-submit.is-ready { border-color:#8aa89d; background:linear-gradient(180deg,#18302e,#0b1717); color:#d9e5d9; box-shadow:inset 0 0 1rem rgba(101,163,148,.12),0 0 1rem rgba(85,145,133,.15); }
+.water-rite-submit:hover:not(:disabled) { filter:brightness(1.18); transform:translateY(-1px); cursor:pointer; }
+@media (max-width:760px) { .water-rite-controls { grid-template-columns:1fr; } }
+
+/* Portrety przeciwników Karczmy — kuta, gotycka oprawa bez wpływu na layout walki. */
+.tavern-portrait-frame { --enemy-frame-metal:#9ba0a0; --enemy-frame-light:#e1e2dc; --enemy-frame-shadow:#24292b; --enemy-frame-aura:151,164,170; }
+.tavern-portrait-theme-blue { --enemy-frame-metal:#6f95ad; --enemy-frame-light:#c9efff; --enemy-frame-shadow:#102735; --enemy-frame-aura:43,157,255; }
+.tavern-portrait-theme-red { --enemy-frame-metal:#a06755; --enemy-frame-light:#f3c4a4; --enemy-frame-shadow:#351612; --enemy-frame-aura:238,55,39; }
+.tavern-portrait-theme-violet { --enemy-frame-metal:#8b74a3; --enemy-frame-light:#e3ccff; --enemy-frame-shadow:#27142f; --enemy-frame-aura:167,69,242; }
+.tavern-portrait-frame .arena-fighter-figure { overflow:visible; clip-path:none; border-color:rgba(var(--enemy-frame-aura),.38); }
+.tavern-portrait-frame .arena-fighter-figure > img,
+.tavern-portrait-frame .arena-fighter-atlas-portrait { clip-path:polygon(.55rem 0,calc(100% - .55rem) 0,100% .55rem,100% calc(100% - .55rem),calc(100% - .55rem) 100%,.55rem 100%,0 calc(100% - .55rem),0 .55rem); }
+.tavern-portrait-frame .arena-fighter-figure::after { z-index:3; clip-path:polygon(.55rem 0,calc(100% - .55rem) 0,100% .55rem,100% calc(100% - .55rem),calc(100% - .55rem) 100%,.55rem 100%,0 calc(100% - .55rem),0 .55rem); }
+.tavern-portrait-forged-frame { position:absolute; z-index:7; inset:-.72rem; pointer-events:none; filter:drop-shadow(0 3px 3px #000) drop-shadow(0 0 .3rem rgba(var(--enemy-frame-aura),.3)); }
+.tavern-portrait-forged-frame > svg { position:absolute; z-index:3; inset:0; width:100%; height:100%; overflow:visible; }
+.tavern-frame-outer { fill:none; stroke:url(#tavern-frame-metal); stroke-width:2.7; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+.tavern-frame-inner { fill:none; stroke:var(--enemy-frame-light); stroke-width:.72; opacity:.58; vector-effect:non-scaling-stroke; }
+.tavern-frame-thorns path { fill:url(#tavern-frame-metal); stroke:var(--enemy-frame-light); stroke-width:.38; vector-effect:non-scaling-stroke; }
+.tavern-frame-scrollwork path { fill:none; stroke:var(--enemy-frame-light); stroke-width:.82; stroke-linecap:round; stroke-linejoin:round; opacity:.78; vector-effect:non-scaling-stroke; }
+.tavern-frame-boss-crest path { fill:url(#tavern-frame-metal); stroke:var(--enemy-frame-light); stroke-width:.66; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 2px rgba(var(--enemy-frame-aura),.7)); }
+.tavern-frame-rivets circle { fill:var(--enemy-frame-light); stroke:var(--enemy-frame-shadow); stroke-width:.45; vector-effect:non-scaling-stroke; }
+.tavern-portrait-rank-common .tavern-frame-thorns,
+.tavern-portrait-rank-elite .tavern-frame-thorns { opacity:.82; }
+.tavern-portrait-rank-common .tavern-frame-scrollwork { opacity:.5; }
+.tavern-portrait-rank-boss .tavern-portrait-forged-frame { inset:-.86rem; filter:drop-shadow(0 3px 4px #000) drop-shadow(0 0 .6rem rgba(var(--enemy-frame-aura),.42)); }
+.tavern-portrait-rank-raid-boss .tavern-portrait-forged-frame { inset:-1rem; filter:drop-shadow(0 4px 5px #000) drop-shadow(0 0 .8rem rgba(var(--enemy-frame-aura),.58)); }
+.tavern-portrait-elemental-aura { position:absolute; z-index:1; inset:.65rem; overflow:hidden; opacity:.76; filter:blur(2px) saturate(1.35); }
+.tavern-portrait-elemental-aura::before,
+.tavern-portrait-elemental-aura::after { position:absolute; inset:0; border:4px solid rgba(var(--enemy-frame-aura),.65); box-shadow:inset 0 0 1rem rgba(var(--enemy-frame-aura),.46),0 0 1.25rem rgba(var(--enemy-frame-aura),.65); content:''; animation:tavern-enemy-aura-breathe 2.3s ease-in-out infinite alternate; }
+.tavern-portrait-elemental-aura::after { inset:.35rem; border-width:2px; opacity:.55; animation-delay:-1.1s; }
+.tavern-portrait-elemental-aura i { position:absolute; width:1.7rem; height:5rem; border-radius:50% 50% 20% 20%; background:linear-gradient(180deg,transparent,rgba(var(--enemy-frame-aura),.75)); filter:blur(3px); animation:tavern-enemy-flame 2.1s ease-in-out infinite; }
+.tavern-portrait-elemental-aura i:nth-child(1) { left:-.3rem; bottom:8%; rotate:-8deg; }
+.tavern-portrait-elemental-aura i:nth-child(2) { right:-.2rem; bottom:22%; rotate:7deg; animation-delay:-.7s; }
+.tavern-portrait-elemental-aura i:nth-child(3) { top:4%; left:28%; rotate:82deg; animation-delay:-1.3s; }
+.tavern-portrait-elemental-aura i:nth-child(4) { right:24%; bottom:-1rem; animation-delay:-.35s; }
+@keyframes tavern-enemy-aura-breathe { from { opacity:.35; filter:brightness(.75); } to { opacity:.9; filter:brightness(1.35); } }
+@keyframes tavern-enemy-flame { 0%,100% { scale:.72 1; translate:0 .5rem; opacity:.28; } 50% { scale:1.15 1.35; translate:.2rem -1rem; opacity:.82; } }
+@media (prefers-reduced-motion:reduce) { .tavern-portrait-elemental-aura::before,.tavern-portrait-elemental-aura::after,.tavern-portrait-elemental-aura i { animation:none; } }
+
+/* Obrazowe, metaliczne ramy portretów przeciwników Karczmy. */
+.tavern-portrait-frame .arena-fighter-figure {
+  overflow: visible;
+  clip-path: none;
+  border-color: transparent;
+  box-shadow: inset 0 0 2.5rem rgba(0,0,0,.34), 0 .75rem 1.7rem rgba(0,0,0,.52);
+}
+.tavern-portrait-frame .arena-fighter-figure > img,
+.tavern-portrait-frame .arena-fighter-atlas-portrait,
+.tavern-portrait-frame .arena-fighter-figure::after { clip-path: none; }
+.tavern-portrait-frame .arena-fighter-figure::after { z-index: 3; }
+.tavern-portrait-image-frame {
+  position: absolute;
+  z-index: 8;
+  inset: -1.12rem;
+  pointer-events: none;
+  filter: drop-shadow(0 .28rem .2rem rgba(0,0,0,.9));
+}
+.tavern-portrait-image-frame > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+}
+.tavern-portrait-rank-boss .tavern-portrait-image-frame { inset: -1.22rem; }
+.tavern-portrait-rank-raid-boss .tavern-portrait-image-frame {
+  inset: -1.34rem;
+  animation: tavern-enemy-frame-pulse 2.35s ease-in-out infinite alternate;
+}
+.tavern-portrait-image-frame-blue { filter: drop-shadow(0 .3rem .24rem rgba(0,0,0,.92)) drop-shadow(0 0 .55rem rgba(69,162,255,.54)); }
+.tavern-portrait-image-frame-red { filter: drop-shadow(0 .3rem .24rem rgba(0,0,0,.92)) drop-shadow(0 0 .52rem rgba(227,50,35,.48)); }
+.tavern-portrait-image-frame-violet { filter: drop-shadow(0 .3rem .24rem rgba(0,0,0,.92)) drop-shadow(0 0 .55rem rgba(158,65,243,.5)); }
+@keyframes tavern-enemy-frame-pulse {
+  from { opacity: .84; transform: scale(.995); }
+  to { opacity: 1; transform: scale(1.008); }
+}
+@media (prefers-reduced-motion:reduce) { .tavern-portrait-rank-raid-boss .tavern-portrait-image-frame { animation: none; } }
+
+/* Autorska minigra starego młyna. */
+.mill-mechanism {
+  --mill-accent: #c28a35;
+  position: relative;
+  margin-top: 1.25rem;
+  border: 1px solid rgba(133, 96, 45, .58);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(112, 71, 22, .18), transparent 46%),
+    repeating-linear-gradient(90deg, transparent 0 5.8rem, rgba(198, 149, 72, .025) 5.9rem 6rem),
+    linear-gradient(145deg, rgba(17, 15, 12, .96), rgba(3, 6, 7, .99));
+  padding: clamp(1rem, 2.3vw, 1.6rem);
+  box-shadow: inset 0 0 3rem rgba(0, 0, 0, .72), 0 .75rem 2rem rgba(0, 0, 0, .28);
+  overflow: hidden;
+}
+
+.mill-mechanism::before {
+  position: absolute;
+  inset: .42rem;
+  border: 1px solid rgba(184, 132, 54, .13);
+  content: '';
+  pointer-events: none;
+}
+
+.mill-mechanism-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(143, 105, 51, .3);
+  padding: 0 0 .85rem;
+}
+
+.mill-mechanism-header div { display: grid; gap: .25rem; }
+.mill-mechanism-header small {
+  color: #937142;
+  font: 650 .62rem/1.3 'Segoe UI', sans-serif;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+.mill-mechanism-header strong {
+  color: #ddd0b7;
+  font: 400 1.2rem/1.25 Georgia, serif;
+}
+.mill-mechanism-header > span {
+  min-width: 3.25rem;
+  border-left: 1px solid rgba(143, 105, 51, .3);
+  color: #d3aa61;
+  font: 600 1.15rem/1 Georgia, serif;
+  text-align: right;
+}
+
+.mill-wheel-bank {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(.75rem, 2vw, 1.4rem);
+  margin: 1.35rem auto 1rem;
+}
+.mill-wheel-station {
+  --wheel-size: clamp(7rem, 12vw, 9.5rem);
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border: 1px solid rgba(80, 72, 59, .42);
+  background: linear-gradient(180deg, rgba(29, 25, 18, .55), rgba(4, 7, 8, .42));
+  padding: 1.45rem .7rem .75rem;
+  color: #625d54;
+  transition: border-color .28s ease, background .28s ease, box-shadow .28s ease, opacity .28s ease;
+}
+
+.mill-wheel-station:not(.is-active):not(.is-success):not(.is-failure) { opacity: .55; }
+.mill-wheel-station.is-active {
+  border-color: rgba(202, 147, 55, .72);
+  background: radial-gradient(circle at 50% 43%, rgba(147, 91, 21, .2), rgba(5, 8, 9, .68) 62%);
+  box-shadow: inset 0 0 1.5rem rgba(177, 110, 25, .1), 0 0 1rem rgba(178, 111, 28, .08);
+}
+.mill-wheel-station.is-success { border-color: rgba(92, 149, 106, .6); color: #83b28c; }
+.mill-wheel-station.is-failure { border-color: rgba(164, 69, 52, .65); color: #c57466; }
+
+.mill-wheel-target {
+  position: absolute;
+  z-index: 4;
+  top: 1.45rem;
+  left: 50%;
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  border-radius: 50%;
+  background: conic-gradient(from 338deg, rgba(255, 222, 145, .62) 0deg, rgba(202, 133, 36, .3) 22deg, rgba(255, 222, 145, .62) 44deg, transparent 44deg 360deg);
+  translate: -50% 0;
+  -webkit-mask: radial-gradient(circle, transparent 0 66%, #000 68% 82%, transparent 84%);
+  mask: radial-gradient(circle, transparent 0 66%, #000 68% 82%, transparent 84%);
+  filter: drop-shadow(0 0 .45rem rgba(229, 167, 66, .55));
+  pointer-events: none;
+}
+
+.mill-wheel {
+  position: relative;
+  display: grid;
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  color: #d6af65;
+  filter: drop-shadow(0 .55rem .7rem rgba(0, 0, 0, .68));
+  cursor: default;
+}
+.mill-wheel:not(:disabled) { cursor: pointer; }
+.mill-wheel-teeth {
+  position: absolute;
+  inset: .25rem;
+  border: .5rem solid #3c3326;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #100e0b 0 17%, #665139 18% 21%, #17130e 22% 47%, transparent 48%),
+    repeating-conic-gradient(from 0deg, #716047 0 5deg, #2a241c 6deg 12deg);
+  box-shadow: inset 0 0 0 1px #a57b3c, inset 0 0 1.3rem #000, 0 0 0 2px #17130f, 0 0 0 4px #5a452c;
+  rotate: var(--wheel-angle);
+}
+.mill-wheel-teeth::before,
+.mill-wheel-teeth::after {
+  position: absolute;
+  inset: 15%;
+  border: 2px solid rgba(180, 132, 62, .58);
+  border-radius: 50%;
+  content: '';
+}
+.mill-wheel-teeth::after { inset: 37%; background: radial-gradient(circle, #b3833f, #3b2916 60%, #0b0b09 64%); }
+.mill-wheel > b {
+  position: relative;
+  z-index: 3;
+  color: #e5c17b;
+  font: 600 .7rem/1 Georgia, serif;
+  pointer-events: none;
+}
+.mill-wheel-lock-mark {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  rotate: var(--wheel-angle);
+  pointer-events: none;
+}
+.mill-wheel-lock-mark::before {
+  position: absolute;
+  top: -.08rem;
+  left: 50%;
+  width: 1.05rem;
+  height: 1.5rem;
+  background: linear-gradient(180deg, #fff1ac, #d19131 55%, #714414);
+  content: '';
+  clip-path: polygon(50% 0, 100% 48%, 65% 100%, 35% 100%, 0 48%);
+  translate: -50% 0;
+  filter: drop-shadow(0 0 .35rem #e5ad45) drop-shadow(0 0 .75rem rgba(224, 153, 46, .65));
+}
+.mill-wheel-lock-mark i {
+  position: absolute;
+  top: .32rem;
+  left: 50%;
+  width: .32rem;
+  height: .32rem;
+  border: 1px solid #fff0ac;
+  background: #8b561d;
+  translate: -50% 0;
+  rotate: 45deg;
+}
+.mill-wheel-station.is-active .mill-wheel { filter: drop-shadow(0 .55rem .7rem rgba(0,0,0,.7)) drop-shadow(0 0 .55rem rgba(187,120,30,.24)); }
+.mill-wheel-station.is-in-zone {
+  border-color: rgba(239, 187, 84, .95);
+  box-shadow: inset 0 0 2rem rgba(194, 126, 30, .18), 0 0 1.2rem rgba(220, 158, 56, .22);
+}
+.mill-wheel-station.is-in-zone .mill-wheel-target { filter: brightness(1.35) drop-shadow(0 0 .7rem rgba(255, 194, 82, .9)); }
+.mill-wheel-station.is-in-zone .mill-wheel-lock-mark::before { filter: brightness(1.35) drop-shadow(0 0 .55rem #ffd66f) drop-shadow(0 0 1rem #d88c25); }
+.mill-wheel-station.is-success .mill-wheel-teeth { box-shadow: inset 0 0 0 1px #71977a, inset 0 0 1.3rem #000, 0 0 0 2px #121612, 0 0 0 4px #48614d; }
+.mill-wheel-station.is-failure .mill-wheel { animation: mill-wheel-recoil .32s ease both; }
+
+.mill-wheel-station > strong { margin-top: .8rem; color: #c9baa1; font: 400 .88rem/1.25 Georgia, serif; }
+.mill-wheel-station > small { margin-top: .28rem; color: currentColor; font: 650 .55rem/1.3 'Segoe UI', sans-serif; letter-spacing: .14em; }
+.mill-mechanism-meter { height: .28rem; border: 1px solid #4e3b22; background: #080a09; }
+.mill-mechanism-meter span { display: block; height: 100%; background: linear-gradient(90deg, #79511d, #e0b35d); box-shadow: 0 0 .6rem rgba(206, 146, 49, .35); transition: width .35s ease; }
+.mill-mechanism > p { max-width: 48rem; margin: .85rem auto 0; color: #8a8174; font: italic .72rem/1.55 Georgia, serif; text-align: center; }
+.mill-mechanism-stop,
+.mill-mechanism-submit {
+  display: block;
+  min-width: min(19rem, 100%);
+  margin: 1rem auto 0;
+  border: 1px solid #a56f1d;
+  background: linear-gradient(180deg, #3b260d, #211407);
+  padding: .82rem 1rem;
+  color: #ead9b4;
+  font: 650 .64rem/1 'Segoe UI', sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  transition: border-color .18s ease, filter .18s ease, transform .18s ease;
+}
+.mill-mechanism-stop:hover:not(:disabled),
+.mill-mechanism-submit:hover:not(:disabled) { border-color: #e1ad54; filter: brightness(1.18); transform: translateY(-1px); }
+.mill-mechanism-stop.is-ready {
+  border-color: #f0bd5d;
+  background: linear-gradient(180deg, #684112, #352006);
+  color: #fff0c2;
+  box-shadow: inset 0 0 1rem rgba(255, 195, 84, .14), 0 0 1rem rgba(223, 155, 48, .28);
+  animation: mill-ready-pulse .65s ease-in-out infinite alternate;
+}
+.mill-mechanism.is-ready { --mill-accent: #76a47e; border-color: rgba(92, 149, 106, .62); }
+.mill-mechanism.is-damaged { --mill-accent: #bc6353; border-color: rgba(167, 67, 53, .66); }
+
+@keyframes mill-wheel-recoil {
+  0% { translate: 0; }
+  30% { translate: -.3rem; }
+  60% { translate: .24rem; }
+  100% { translate: 0; }
+}
+@keyframes mill-ready-pulse {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.22); }
+}
+
+@media (max-width: 720px) {
+  .mill-wheel-bank { grid-template-columns: 1fr; }
+  .mill-wheel { --wheel-size: 8rem; }
+  .mill-wheel-runes i:nth-child(1) { transform: translate(-50%, -3.05rem); }
+  .mill-wheel-runes i:nth-child(2) { transform: translate(2.7rem, -50%) rotate(90deg); }
+  .mill-wheel-runes i:nth-child(3) { transform: translate(-50%, 2.4rem) rotate(180deg); }
+  .mill-wheel-runes i:nth-child(4) { transform: translate(-3.05rem, -50%) rotate(-90deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mill-wheel-station.is-failure .mill-wheel { animation: none; }
+  .mill-mechanism-stop.is-ready { animation: none; }
+}
+
 @media (max-width: 900px) {
   .tavern-stage-puzzle { width: calc(100% - 2rem); }
   .tavern-stage-puzzle .tavern-travel-state { grid-template-columns: 1fr; }
@@ -6242,7 +6582,7 @@ input:focus-visible {
 .item-icon-story-relic-mill-below-walls { --relic-color: #9b8770; border-radius: 50%; clip-path: none; }
 .item-icon-story-relic-vael-courier { --relic-color: #557e76; clip-path: polygon(10% 8%,90% 8%,100% 82%,50% 100%,0 82%); }
 .item-icon-story-relic-stone-bridge-voices { --relic-color: #728899; clip-path: polygon(50% 0,100% 35%,82% 100%,18% 100%,0 35%); }
-.item-icon-story-relic-white-moth-hunter { --relic-color: #d2d6c5; clip-path: polygon(50% 8%,100% 0,78% 48%,100% 100%,50% 78%,0 100%,22% 48%,0 0); }
+.item-icon-story-relic-ashen-phoenix-order { --relic-color: #d16935; clip-path: polygon(50% 0,66% 27%,94% 17%,77% 50%,100% 75%,63% 70%,50% 100%,37% 70%,0 75%,23% 50%,6% 17%,34% 27%); }
 .item-icon-story-relic-raven-tithe { --relic-color: #76568d; clip-path: polygon(48% 0,78% 16%,62% 44%,100% 32%,58% 100%,35% 58%,0 73%,30% 38%); }
 .item-icon-story-relic-drowned-bells { --relic-color: #4d83a3; clip-path: polygon(36% 0,64% 0,72% 20%,88% 77%,100% 86%,0 86%,12% 77%,28% 20%); }
 .item-icon-story-relic-bone-chimera-heart { --relic-color: #d0c4a7; clip-path: polygon(22% 0,50% 22%,78% 0,100% 20%,64% 53%,56% 100%,44% 100%,36% 53%,0 20%); }

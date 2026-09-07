@@ -39,7 +39,7 @@ const PUZZLES: Record<string, TavernPuzzleDefinition> = {
   },
   'mill-below-walls': {
     key: 'mill-gears', kind: 'SEQUENCE', title: 'Mechanizm pod młynem',
-    prompt: 'Cztery znaki sterują kamiennym kołem. Na ścianie wyryto: „Ziarno przyjmuje wodę, ogień budzi koło, a popiół kończy pracę”.',
+    prompt: 'Cztery znaki sterują awaryjnym napędem spichlerza. Nad korbą wyryto instrukcję nocnej zmiany: „Woda niesie koło. Ogień budzi kamień. Popiół pieczętuje pracę. Ziarno czeka na tych, którzy przeżyją”.',
     instruction: 'Wybierz trzy znaki we właściwej kolejności.',
     options: [
       { id: 'grain', label: 'Ziarno', detail: 'Początek pracy młyna.', symbol: 'I' },
@@ -47,9 +47,9 @@ const PUZZLES: Record<string, TavernPuzzleDefinition> = {
       { id: 'fire', label: 'Ogień', detail: 'Znak wykuty przy osi koła.', symbol: 'III' },
       { id: 'ash', label: 'Popiół', detail: 'Pieczęć zamykająca mechanizm.', symbol: 'IV' },
     ],
-    solution: ['water', 'fire', 'ash'], hint: 'Inskrypcja opisuje następstwo czynności, nie listę wszystkich symboli.',
-    successText: 'Koło zatrzymuje się, odsłaniając zejście. Głodomór traci źródło siły.',
-    failureText: 'Kamienie obracają się w przeciwną stronę. Huk budzi to, co spało w piwnicy.',
+    solution: ['water', 'fire', 'ash'], hint: 'Ziarno jest ładunkiem młyna, nie częścią procedury uruchamiania i zamykania awaryjnego napędu.',
+    successText: 'Zapadki zwalniają we właściwym rytmie. Koło traci impet, a każde uderzenie Grumara będzie musiało walczyć z ciężarem nieruchomego żarna.',
+    failureText: 'Kamienie ruszają wstecz. Mechanizm odtwarza ostatnią nocną zmianę, a Grumar odpowiada na wezwanie pełną siłą martwego serca.',
   },
   'vael-courier': {
     key: 'dead-letter', kind: 'TESTIMONY', title: 'Adresat, który nie żyje',
@@ -78,19 +78,19 @@ const PUZZLES: Record<string, TavernPuzzleDefinition> = {
     successText: 'Ołtarz rozsuwa taflę wody. W kryształach pojawia się wspomnienie dłoni uruchamiającej śluzy.',
     failureText: 'Pierścienie obracają się przeciw sobie. Iglica odpowiada głosem dzwonów i budzi kolejnych strażników.',
   },
-  'white-moth-hunter': {
-    key: 'moth-cipher', kind: 'SEQUENCE', title: 'Szyfr Białej Ćmy',
-    prompt: 'Na relikcie widnieją cztery fazy ćmy. Notatka badacza mówi: „Z ciemności ku płomieniowi, lecz nigdy przez pełne światło”.',
-    instruction: 'Ułóż trzy fazy otwierające skrytkę.',
+  'ashen-phoenix-order': {
+    key: 'phoenix-rebirth-rite', kind: 'SEQUENCE', title: 'Liturgia Pierwszego Stosu',
+    prompt: 'Na relikwiarzu wyryto słowa: „Imię oddaj płomieniowi. Płomień pozostawi popiół. Z popiołu powróci pamięć. Korona przyjdzie dopiero po odrodzeniu”.',
+    instruction: 'Ułóż trzy pieczęcie otwierające archiwum przed znakiem władzy.',
     options: [
-      { id: 'cocoon', label: 'Kokon', detail: 'Ukryta przemiana.', symbol: 'I' },
-      { id: 'wing', label: 'Skrzydło', detail: 'Pierwszy lot.', symbol: 'II' },
-      { id: 'flame', label: 'Płomień', detail: 'Cel wędrówki.', symbol: 'III' },
-      { id: 'sun', label: 'Słońce', detail: 'Pełne światło.', symbol: 'IV' },
+      { id: 'name', label: 'Imię', detail: 'Tożsamość składana w ofierze.', symbol: 'I' },
+      { id: 'flame', label: 'Płomień', detail: 'Ogień rozdzielający ciało od Echa.', symbol: 'II' },
+      { id: 'ash', label: 'Popiół', detail: 'Naczynie dla ocalałej pamięci.', symbol: 'III' },
+      { id: 'crown', label: 'Korona', detail: 'Prawo do rozkazywania odrodzonym.', symbol: 'IV' },
     ],
-    solution: ['cocoon', 'wing', 'flame'], hint: 'Ostatni symbol został wprost wykluczony przez autora notatki.',
-    successText: 'Relikt otwiera się bezgłośnie. Wewnątrz znajduje się znak ujawniający słabość strażnika.',
-    failureText: 'Znak słońca wypala ostrzeżenie na dłoni bohatera. Strażnik wyczuwa naruszenie reliktu.',
+    solution: ['name', 'flame', 'ash'], hint: 'Korona nie uczestniczy w odrodzeniu. Pojawia się dopiero wtedy, gdy pamięć można już podporządkować.',
+    successText: 'Relikwiarz oddycha gorącym popiołem. Wewnątrz zachowały się imiona skrybów oraz formuła rozluźniająca przysięgę Morvatha.',
+    failureText: 'Korona zamyka rytuał zbyt wcześnie. Relikwiarz wypala znak uzurpatora, a Morvath wyczuwa naruszenie Pierwszego Stosu.',
   },
   'raven-tithe': {
     key: 'harpy-nest', kind: 'CLUE', title: 'Droga do kruczego gniazda',

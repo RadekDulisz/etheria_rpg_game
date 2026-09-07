@@ -2,7 +2,7 @@
 
 > Przeglądarkowa gra RPG dark fantasy, w której rozwijasz bohatera, kompletujesz wyposażenie, podejmujesz wyprawy, walczysz na arenie i zapisujesz własną historię w kronikach Etherii.
 
-![Ekran logowania do Kronik Etherii](release-materials/screenshots/01-logowanie.png)
+![Aktualny ekran logowania do Kronik Etherii](readme-assets/screenshots/01-logowanie.png)
 
 Kroniki Etherii łączą progresję znaną z klasycznych gier MMORPG z wygodnym interfejsem gry przeglądarkowej. Rozgrywka koncentruje się na rozwoju jednej postaci, zdobywaniu coraz lepszego ekwipunku, podejmowaniu decyzji moralnych oraz rywalizacji PvE i PvP.
 
@@ -24,93 +24,110 @@ Kroniki Etherii łączą progresję znaną z klasycznych gier MMORPG z wygodnym 
 
 ## Gra w działaniu
 
-### Twierdza i rozwój bohatera
+Poniższe zrzuty zostały wykonane bezpośrednio z aktualnej wersji aplikacji. Przedstawiają rzeczywisty interfejs, obecny zestaw modułów oraz dane rozwiniętego konta testowego.
 
-Twierdza jest centrum dowodzenia gracza. Zawiera najważniejsze informacje o stanie bohatera: poziom, doświadczenie, złoto, zdrowie, reputację oraz aktualne wartości bojowe. Stały panel postaci pozwala kontrolować progres bez opuszczania bieżącego modułu.
+### Twierdza - centrum dowodzenia
 
-![Główny ekran twierdzy i statystyki bohatera](release-materials/screenshots/02-twierdza.png)
+Twierdza zbiera najważniejsze informacje w jednym miejscu. Górna karta pokazuje bieżący priorytet bohatera, zdrowie, doświadczenie, skarbiec i reputację. Niżej znajdują się skróty do głównych aktywności, stan przygotowania postaci oraz faktyczne parametry bojowe wynikające z atrybutów i założonego wyposażenia.
 
-Po zdobyciu odpowiedniej liczby punktów doświadczenia pojawia się pełnoekranowa celebracja awansu. Gracz od razu widzi nowy poziom, przyrost maksymalnego zdrowia, zdobyte punkty nauki i kolejny próg doświadczenia.
+![Aktualny widok Twierdzy i panelu bohatera](readme-assets/screenshots/02-twierdza.png)
 
-![Ekran awansu bohatera](release-materials/screenshots/12-awans-poziomu.png)
+Stały panel po prawej stronie pozostaje dostępny podczas korzystania z modułów. Pokazuje portret, tytuł reputacji, rangę Koloseum, HP, złoto, postęp poziomu, biegłość aktywnej broni i najważniejsze statystyki.
 
-### Plecak i wyposażenie
+### Bohater i fizyczne miejsca wyposażenia
 
-Zbrojownia obsługuje wszystkie fizyczne miejsca wyposażenia postaci. Założone przedmioty wpływają na rzeczywiste statystyki bojowe, a zastępowany element automatycznie wraca do plecaka. System rozróżnia między innymi broń, drugą rękę, pancerz, biżuterię oraz przedmioty specjalne.
+Karta bohatera przedstawia sylwetkę otoczoną osiemnastoma rzeczywistymi miejscami na wyposażenie. Każdy slot można wybrać, aby zobaczyć pełne parametry przedmiotu, osadzone klejnoty i poziom ulepszenia. Kolor obramowania i poświaty odpowiada rzadkości elementu.
 
-![Plecak oraz wyposażenie bohatera](release-materials/screenshots/03-zbrojownia.png)
+![Aktualna karta bohatera z założonym wyposażeniem](readme-assets/screenshots/03-bohater.png)
 
-Aktualna wersja rozszerza ten moduł o:
+### Zbrojownia i plecak
 
-- wyszukiwanie, sortowanie i filtrowanie przedmiotów,
-- porównanie przedmiotu z aktualnie używanym wyposażeniem,
-- wizualne oznaczenie rzadkości,
-- indywidualne grafiki broni, pancerzy i biżuterii,
-- poziomy ulepszenia oraz gniazda na klejnoty.
+Plecak korzysta ze zwartego układu znanego z klasycznych gier RPG. Pozwala wyszukiwać przedmioty po nazwie, filtrować je według rodzaju i rangi, zmieniać sposób sortowania oraz przełączać widok. Obok znajduje się podgląd kompletu wyposażenia, a wybrany przedmiot może zostać porównany z aktualnie założonym odpowiednikiem.
 
-### Targowisko i kupiec
+![Aktualny plecak, filtry, klejnoty i wyposażenie](readme-assets/screenshots/04-zbrojownia.png)
 
-Targowisko przedstawia ograniczoną, losowaną ofertę dnia. Przedmioty mogą otrzymywać rabaty, a wyższe rzadkości pojawiają się odpowiednio rzadziej. Ofertę można odpłatnie odświeżyć maksymalnie trzy razy dziennie.
+W tym samym magazynie są widoczne bronie, pancerze, biżuteria, dodatki i wszystkie posiadane klejnoty. Każdy egzemplarz zachowuje własny poziom ulepszenia oraz stan gniazd.
 
-![Losowa oferta targowiska](release-materials/screenshots/04-targowisko.png)
+### Targowisko i Kupiec
 
-Kupiec udostępnia stały katalog wyposażenia. Przedmioty są podzielone według kategorii oraz rangi, a paginacja zapobiega jednoczesnemu renderowaniu całej bazy przedmiotów.
+Targowisko tworzy ograniczoną ofertę dnia z losowymi rabatami i szansą na rzadsze przedmioty. Karty nie są ukrywane, gdy bohater nie spełnia wymagań - gracz może obejrzeć wygląd, parametry, cenę oraz różnice względem własnego wyposażenia. Ofertę można odpłatnie odświeżyć do trzech razy dziennie.
 
-![Katalog stałego kupca](release-materials/screenshots/05-kupiec.png)
+![Aktualna oferta Targowiska z rabatami i porównaniem](readme-assets/screenshots/05-targowisko.png)
+
+Kupiec udostępnia pełny, stały katalog. Pierwszy poziom nawigacji dzieli przedmioty na broń, pancerze, biżuterię i dodatki, a kolejne widoki pozwalają przejść do konkretnej rangi i stronicowanej listy wyposażenia.
+
+![Aktualny katalog Kupca z podziałem na kategorie](readme-assets/screenshots/06-kupiec.png)
 
 ### Wyprawy PvE
 
-Wyprawy to krótkie aktywności PvE o losowanej trudności. Każde zlecenie ma własny opis, szansę powodzenia, koszt zdrowia oraz skalowane nagrody w złocie i doświadczeniu. Decyzja moralna przesuwa reputację bohatera w stronę dobra albo zła.
+Wyprawy są krótszą aktywnością PvE. System losuje jeden z pięciu stopni ryzyka, koszt zdrowia i skalowane nagrody. Posiadłość zwiększa szansę powodzenia, ilość zdobywanego złota oraz prawdopodobieństwo znalezienia przedmiotu, a wybór moralny przesuwa reputację bohatera.
 
-![Wybór wyprawy PvE](release-materials/screenshots/06-wyprawy.png)
+![Aktualny ekran Wypraw wraz z premiami Posiadłości](readme-assets/screenshots/10-wyprawy.png)
 
-Przebieg wyprawy jest prezentowany jako animowana sekwencja, a wynik oraz nagrody pojawiają się kaskadowo. Bohater z niebezpiecznie niskim poziomem zdrowia nie może wyruszyć na szlak.
+Po rozpoczęciu interfejs ustępuje miejsca pełnoekranowej sekwencji podróży. Teksty zmieniają się płynnie, pasek pokazuje postęp, a wynik i nagrody są odsłaniane kaskadowo.
+
+![Pełnoekranowy przebieg Wyprawy](readme-assets/screenshots/15-przebieg-wyprawy.png)
 
 ### Arena i Koloseum
 
-Arena dobiera przeciwnika o zbliżonym poziomie, ale nie skaluje go bezpośrednio do każdego nowego elementu wyposażenia gracza. Dzięki temu rozwój postaci daje zauważalną przewagę. Przed walką można porównać podstawowe statystyki obu stron.
+Arena dobiera przeciwnika względem trwałego punktu odniesienia dla poziomu bohatera, więc zdobycie lepszego wyposażenia daje realnie odczuwalną przewagę. Gracz wybiera stronę konfliktu reputacji, porównuje statystyki obu postaci, może wylosować innego rywala i przed wejściem zna nagrodę oraz koszt kondycji.
 
-![Dobór przeciwnika na arenie](release-materials/screenshots/07-arena.png)
+![Aktualny dobór przeciwnika na Arenie](readme-assets/screenshots/11-arena.png)
 
-Walka jest odtwarzana runda po rundzie i wykorzystuje wspólny silnik obrażeń, trafień krytycznych, parowania oraz celności. Zwycięstwa i porażki zmieniają ranking Koloseum, odblokowują kolejne tytuły oraz rozwijają biegłość używanego rodzaju broni.
+Pojedynek jest odtwarzany runda po rundzie. Silnik uwzględnia obrażenia broni, atak, obronę, celność, trafienia krytyczne i parowanie. Animowane komunikaty bojowe pojawiają się przy portretach, a cios kończący uruchamia osobny finisher. Wynik zmienia bilans zwycięstw, ranking Koloseum, reputację i biegłość używanej broni.
 
-### Bractwa i wojny gildii
+### Bractwa i wojny
 
-Gracz może założyć własne bractwo lub dołączyć do istniejącego. System obsługuje role członków, wspólną salę oraz historię działań gildii.
+Bractwo posiada własny sztandar, kronikę członków, role, panel dowództwa i listę dostępnych rywali. Przywódca może rozpocząć wojnę z inną gildią, a wynik konfliktu trafia do kroniki. Długie listy wojen są stronicowane, a operacje wymagające potwierdzenia korzystają z komunikatów osadzonych przy wykonywanej akcji.
 
-![Widok bractwa](release-materials/screenshots/08-bractwo.png)
-
-![Sala bractwa i członkowie gildii](release-materials/screenshots/09-sala-bractwa.png)
-
-Przywódcy mogą wypowiadać wojny innym bractwom. Wynik konfliktu trafia do kroniki, a zwycięska gildia otrzymuje przewidzianą nagrodę.
+![Aktualny ekran Bractwa, członków i wojen](readme-assets/screenshots/12-bractwo.png)
 
 ### Posiadłość
 
-Posiadłość jest kosztowną, długoterminową inwestycją. Przed zakupem gracz poznaje wymagania oraz podstawowe korzyści wynikające z jej posiadania.
+Posiadłość jest kosztowną inwestycją rozwijaną przez dziesięć poziomów. Każdy etap zmienia ilustrację siedziby i pokazuje korzyści następnej rozbudowy. Wyższy poziom przyspiesza pasywną regenerację HP, skraca czas oczekiwania na rytuał oraz stopniowo zwiększa powodzenie wypraw, zdobywane złoto i szansę na przedmiot.
 
-![Zakup pierwszego poziomu posiadłości](release-materials/screenshots/10-posiadlosc-zakup.png)
+![Aktualny widok rozwiniętej Posiadłości](readme-assets/screenshots/13-posiadlosc.png)
 
-Każdy z dziesięciu poziomów zmienia ilustrację majątku i wzmacnia jego działanie. Posiadłość przyspiesza regenerację zdrowia, skraca czas oczekiwania na rytuał oraz zapewnia niewielkie premie do powodzenia wypraw, zdobywanego złota i szansy na przedmiot.
+Rytuał odnawia zdrowie do pełna i ma własny czas odnowienia. Pasek HP pokazuje także, ile punktów przywróci następny tick regeneracji.
 
-![Rozwinięta posiadłość bohatera](release-materials/screenshots/11-posiadlosc.png)
+### Kowal - ulepszanie i gniazda
 
-### Kowal, klejnoty i Jubiler
+Kowal operuje na konkretnych egzemplarzach przedmiotów. Pozwala hartować wyposażenie, wykuwać gniazda oraz osadzać w nich klejnoty. Przed zatwierdzeniem gracz widzi koszt, szansę powodzenia i dokładną zmianę parametrów. Nieudana próba nie niszczy przedmiotu, a kolejne podejście otrzymuje premię do powodzenia.
 
-Kowal rozwija konkretny egzemplarz przedmiotu — ulepsza jego parametry, odblokowuje gniazda i osadza wybrane klejnoty. Interfejs pokazuje przewidywaną zmianę statystyk jeszcze przed zatwierdzeniem operacji.
+![Aktualny warsztat Kowala](readme-assets/screenshots/07-kowal.png)
 
-Jubiler uzupełnia ten system. Trzy identyczne klejnoty można połączyć w jeden kamień wyższego szlifu, natomiast osadzony klejnot da się bezpiecznie odzyskać za odpowiednią opłatą. Każda rodzina kamieni zapewnia inny rodzaj premii.
+Poziom ulepszenia ma limit zależny od rangi wyposażenia, dzięki czemu przedmioty początkowe nie wymagają absurdalnie wysokiego poziomu bohatera, aby wykorzystać ich pełny potencjał.
+
+### Jubiler - szlifowanie i odzyskiwanie
+
+Jubiler rozwija osobną gospodarkę klejnotów. Trzy kamienie tej samej rodziny i szlifu można połączyć w jeden klejnot wyższego poziomu. Dostępne szlify mają własne kształty, od prostego okrągłego cięcia po prestiżowy szlif szmaragdowy.
+
+![Aktualna pracownia Jubilera i stół szlifierski](readme-assets/screenshots/08-jubiler.png)
+
+Druga część pracowni umożliwia bezpieczne odzyskanie osadzonego klejnotu. Interfejs wskazuje, które premie przedmiot utraci po zabiegu, a odzyskany kamień wraca do plecaka.
 
 ### Karczma pod Złamanym Gryfem
 
-Karczma oferuje osobny system rozbudowanych zleceń fabularnych. Tablica przedstawia kontrakty łatwe, średnie i trudne, a każda historia składa się z kilku etapów:
+Karczma udostępnia wieloetapowe zlecenia fabularne oparte na Księdze Świata Etherii. Kontrakty prowadzą przez różne regiony, składają się z kolejnych scen i pozwalają odkrywać historię świata poprzez opisy wydarzeń, ślady, zeznania oraz spotkania z przeciwnikami. Decyzje gracza wpływają na przebieg zlecenia i jego zakończenie, a najważniejsze rezultaty są zapisywane w Kronice.
 
-1. decyzji wpływających na przebieg zlecenia,
-2. prób atrybutów rozstrzyganych rzutem kości,
-3. interaktywnych zagadek i minigier,
-4. walk ze stworzeniami kanonicznego bestiariusza,
-5. alternatywnych zakończeń oraz wpisu w Kronice.
+![Aktualny etap fabularnego zlecenia w Karczmie](readme-assets/screenshots/09-karczma.png)
 
-Prowiant kupiony u Miry można wykorzystać wyłącznie pomiędzy etapami zadania. Stan zdrowia jest zachowywany przez cały kontrakt, a śmierć lub ucieczka kończy zlecenie porażką.
+Zlecenia mogą zawierać:
+
+- wybory zmieniające dalszy przebieg historii,
+- próby `STR`, `DEX`, `CON` i `INT` rozstrzygane animowanym rzutem kości,
+- interaktywne zagadki i minigry zręcznościowe,
+- walki z unikatowymi przeciwnikami i finałowymi bossami,
+- prowiant używany pomiędzy etapami,
+- alternatywne zakończenia, relikty oraz trwałe wpisy w Kronice.
+
+Zdrowie jest zachowywane pomiędzy etapami. Śmierć albo dobrowolna ucieczka kończy zlecenie porażką, a podczas aktywnego kontraktu nie można ominąć ryzyka przez regenerację w Posiadłości.
+
+### Awans bohatera
+
+Zdobycie poziomu uruchamia pełnoekranową celebrację inspirowaną klasycznymi grami fantasy. Ekran pokazuje nowy poziom, przyrost maksymalnego zdrowia, zdobyte punkty nauki oraz następny próg doświadczenia. Po awansie zdrowie bohatera zostaje odnowione do pełna.
+
+![Aktualna pełnoekranowa animacja awansu](readme-assets/screenshots/14-awans.png)
 
 ## Architektura
 
@@ -189,7 +206,7 @@ npm install
 npx prisma generate
 npm run start:dev
 
-# Frontend — w drugim terminalu
+# Frontend - w drugim terminalu
 cd frontend
 npm install
 npm run dev
